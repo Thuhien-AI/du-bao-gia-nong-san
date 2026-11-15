@@ -173,18 +173,33 @@ def ghi_cookie(gia_tri: str, so_giay: int):
         f"max-age={so_giay}; SameSite=Lax';</script>", height=0)
 
 
-# Lần đầu mở trang: thử đăng nhập lại bằng vé lưu trong trình duyệt
+# Lần đầu mở trang: thử đăng nhập lại bằng vé lưu trong trình duyệt.
+# - Chạy trên máy: đọc thẳng cookie (st.context.cookies).
+# - Trên Streamlit Cloud, máy chủ trung gian xoá cookie, nên một đoạn JavaScript nhỏ (cau_noi_ve) đọc vé
+#   trong trình duyệt rồi gửi lên qua địa chỉ (?ve=...). App đọc xong xoá ngay khỏi địa chỉ.
 if "nguoi_dung" not in st.session_state:
     try:
         ve_cu = st.context.cookies.get(TEN_COOKIE)
     except Exception:
         ve_cu = None
-    st.session_state.nguoi_dung = xt.nguoi_dung_tu_ve(ve_cu)
-    st.session_state.ve = ve_cu if st.session_state.nguoi_dung else None
+    ve_url = st.query_params.get("ve")
+    if ve_url:
+        st.query_params.pop("ve", None)
+        st.session_state.da_thu_ve_url = True
+    nd = xt.nguoi_dung_tu_ve(ve_cu)
+    ve_dung = ve_cu if nd else None
+    if not nd and ve_url:
+        nd = xt.nguoi_dung_tu_ve(ve_url)
+        ve_dung = ve_url if nd else None
+        if not nd:                      # vé hết hạn / sai -> xoá trong trình duyệt để không thử lại mãi
+            st.session_state.xoa_ve_trinh_duyet = True
+    st.session_state.nguoi_dung = nd
+    st.session_state.ve = ve_dung
 
 if st.session_state.pop("ghi_ve_moi", None):          # vừa đăng nhập -> lưu vé vào trình duyệt
     ghi_cookie(st.session_state.ve, xt.SO_NGAY_GIU_DANG_NHAP * 86400)
-if st.session_state.pop("xoa_ve_trinh_duyet", None):  # vừa đăng xuất -> xoá vé trong trình duyệt
+VUA_XOA_VE = bool(st.session_state.pop("xoa_ve_trinh_duyet", None))
+if VUA_XOA_VE:                                        # vừa đăng xuất / vé hỏng -> xoá vé trong trình duyệt
     ghi_cookie("", 0)
 
 
@@ -287,7 +302,25 @@ def trang_dang_nhap():
          "Mật khẩu được mã hoá an toàn</div>")
 
 
+def cau_noi_ve():
+    """Trình duyệt còn vé đăng nhập -> tải lại trang kèm ?ve=... để app tự đăng nhập (dùng trên Streamlit Cloud)."""
+    components.html(f"""<script>
+    try {{
+      const w = window.parent;
+      const m = w.document.cookie.match(/(?:^|; ){TEN_COOKIE}=([^;]+)/);
+      const u = new URL(w.location.href);
+      if (m && m[1] && !u.searchParams.has("ve")) {{
+        w.document.body.style.opacity = "0";
+        u.searchParams.set("ve", m[1]);
+        w.location.replace(u.toString());
+      }}
+    }} catch (e) {{}}
+    </script>""", height=0)
+
+
 if not st.session_state.nguoi_dung:
+    if not st.session_state.get("da_thu_ve_url") and not VUA_XOA_VE:
+        cau_noi_ve()
     trang_dang_nhap()
     st.stop()
 
