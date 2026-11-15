@@ -1,0 +1,35 @@
+2026-11-08 08:49  ✅ Lúa: đã đầy đủ đến hôm qua
+2026-11-08 08:49  ✅ Cà phê: đã đầy đủ đến hôm qua
+2026-11-08 08:49  ✅ Hồ tiêu: đã đầy đủ đến hôm qua
+2026-11-09 01:47  ⚠️ Lúa: không cập nhật được ([Errno 2] No such file or directory: 'E:\\du-bao-gia-nong-san\\data\\gia_lua.csv'). Dữ liệu cũ vẫn giữ nguyên.
+2026-11-09 01:47  ⚠️ Cà phê: không cập nhật được ([Errno 2] No such file or directory: 'E:\\du-bao-gia-nong-san\\data\\gia_ca_phe.csv'). Dữ liệu cũ vẫn giữ nguyên.
+2026-11-09 01:47  ⚠️ Hồ tiêu: không cập nhật được ([Errno 2] No such file or directory: 'E:\\du-bao-gia-nong-san\\data\\gia_ho_tieu.csv'). Dữ liệu cũ vẫn giữ nguyên.
+2026-11-09 01:49  ✅ Lúa: đã đầy đủ đến hôm qua
+2026-11-09 01:49  ✅ Cà phê: đã đầy đủ đến hôm qua
+2026-11-09 01:49  ✅ Hồ tiêu: đã đầy đủ đến hôm qua
+2026-11-11 06:00  ✅ Lúa: thêm giá ngày 09/11, 10/11
+2026-11-11 06:00  ⚠️ Cà phê: không cập nhật được ([Errno 2] No such file or directory: 'E:\\du-bao-gia-nong-san\\data\\gia_ca_phe.csv'). Dữ liệu cũ vẫn giữ nguyên.
+2026-11-11 06:00  ⚠️ Hồ tiêu: không cập nhật được ([Errno 2] No such file or directory: 'E:\\du-bao-gia-nong-san\\data\\gia_ho_tieu.csv'). Dữ liệu cũ vẫn giữ nguyên.
+2026-11-11 07:01  ✅ Lúa: đã đầy đủ đến hôm qua
+2026-11-11 07:01  ✅ Cà phê: thêm giá ngày 09/11, 10/11
+2026-11-11 07:01  ✅ Hồ tiêu: thêm giá ngày 09/11, 10/11
+2026-11-11 07:01  ✅ Cà phê thế giới: thêm giá ngày 08/11, 09/11, 10/11
+2026-11-11 07:01  ✅ Lúa: đã đầy đủ đến hôm qua
+2026-11-11 07:01  ✅ Cà phê: đã đầy đủ đến hôm qua
+2026-11-11 07:01  ✅ Hồ tiêu: đã đầy đủ đến hôm qua
+2026-11-11 07:01  ✅ Cà phê thế giới: đã đầy đủ đến hôm qua
+2026-11-14 06:00  ✅ Lúa: 3 ngày báo không đăng giá (lấy giá ngày trước)
+2026-11-14 06:00  ✅ Cà phê: thêm giá ngày 11/11, 12/11, 13/11
+2026-11-14 06:00  ✅ Hồ tiêu: thêm giá ngày 11/11, 12/11, 13/11
+2026-11-14 06:00  ✅ Cà phê thế giới: thêm giá ngày 11/11, 12/11, 13/11
+2026-11-14 06:00  ✅ Hồ tiêu thế giới: 2 ngày báo không đăng giá (lấy giá ngày trước)
+2026-11-14 13:02  ✅ Lúa: 1 ngày báo không đăng giá (lấy giá ngày trước)
+2026-11-14 13:02  ✅ Cà phê: thêm giá ngày 14/11
+2026-11-14 13:02  ✅ Hồ tiêu: thêm giá ngày 14/11
+2026-11-14 13:02  ✅ Cà phê thế giới: thêm giá ngày 14/11
+2026-11-14 13:02  ✅ Hồ tiêu thế giới: thêm giá ngày 14/11
+2026-11-14 13:03  ✅ Lúa: đã đầy đủ đến hôm qua
+2026-11-14 13:03  ✅ Cà phê: đã đầy đủ đến hôm qua
+2026-11-14 13:03  ✅ Hồ tiêu: đã đầy đủ đến hôm qua
+2026-11-14 13:03  ✅ Cà phê thế giới: đã đầy đủ đến hôm qua
+2026-11-14 13:03  ✅ Hồ tiêu thế giới: đã đầy đủ đến hôm qua

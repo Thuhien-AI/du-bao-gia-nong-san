@@ -1,0 +1,10 @@
+Đang cập nhật giá (đến ngày 10/11/2026, giờ Việt Nam)...
+✅ Lúa: thêm giá ngày 09/11, 10/11
+⚠️ Cà phê: không cập nhật được ([Errno 2] No such file or directory: 'E:\\du-bao-gia-nong-san\\data\\gia_ca_phe.csv'). Dữ liệu cũ vẫn giữ nguyên.
+⚠️ Hồ tiêu: không cập nhật được ([Errno 2] No such file or directory: 'E:\\du-bao-gia-nong-san\\data\\gia_ho_tieu.csv'). Dữ liệu cũ vẫn giữ nguyên.
+Đang cập nhật giá (đến ngày 13/11/2026, giờ Việt Nam)...
+✅ Lúa: 3 ngày báo không đăng giá (lấy giá ngày trước)
+✅ Cà phê: thêm giá ngày 11/11, 12/11, 13/11
+✅ Hồ tiêu: thêm giá ngày 11/11, 12/11, 13/11
+✅ Cà phê thế giới: thêm giá ngày 11/11, 12/11, 13/11
+✅ Hồ tiêu thế giới: 2 ngày báo không đăng giá (lấy giá ngày trước)

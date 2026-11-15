@@ -1,0 +1,20 @@
+THƯ MỤC ẢNH SẢN PHẨM CỦA CHỢ NÔNG NGHIỆP
+==========================================
+
+Mỗi khi mở trang Diễn đàn, app tự đọc thư mục này và gắn ảnh MỚI vào sản phẩm có tên khớp.
+
+CÁCH ĐẶT TÊN FILE
+  Tên file = tên sản phẩm viết không dấu, chữ thường, nối bằng dấu gạch ngang.
+  Muốn thêm nhiều ảnh cho cùng sản phẩm: thêm đuôi phía sau.
+    Phân Urê 46%          -> phan-ure-46.png, phan-ure-46-anh-that.jpg, phan-ure-46-2.jpg
+    Lúa giống ST25        -> lua-giong-st25.jpg
+    Bình phun điện 16 lít -> binh-phun-dien-16-lit.jpg
+
+  Dùng được ảnh .jpg, .jpeg, .png, .webp (tối đa 5 MB mỗi ảnh).
+
+LƯU Ý
+  - Mỗi file chỉ được nạp 1 lần. Muốn thay ảnh: đăng nhập admin -> Chợ -> Sửa sản phẩm
+    -> tích "Xoá ảnh này" ở ảnh cũ, rồi bỏ ảnh mới (tên file mới) vào thư mục này.
+  - Ảnh đầu tiên của sản phẩm là ảnh hiện trên thẻ sản phẩm.
+  - Chỉ dùng ảnh bạn tự chụp hoặc được phép dùng (ảnh trên trang bán hàng thường có bản quyền).
+  - Các ảnh *.png có sẵn là ảnh minh hoạ do Claude vẽ cho app.
