@@ -3391,3 +3391,92 @@ def dau_chi_tiet_sp(sp: dict) -> str:
                f'<div class="ct-gia">{so(sp["gia"])}<small> đ / {e(sp["don_vi"])}</small></div>'
                f'<div class="ct-dong">{tt}' + (f'<span>🌱 Hợp với: <b>{e(sp["phu_hop"])}</b></span>' if sp["phu_hop"] else "")
                + '</div><div class="ct-cam">✅ Giá mẫu · 🚚 Giao tận nơi (chế độ thử) · 💬 Hỏi đáp trên Diễn đàn</div></div>')
+
+
+
+# ================================================================ ĐẶT HÀNG (CHỢ)
+def thanh_buoc_dat(buoc: int) -> str:
+    """Thanh 3 bước: Xem sản phẩm → Thông tin nhận hàng → Thanh toán."""
+    ten = ["Xem sản phẩm", "Thông tin nhận hàng", "Thanh toán"]
+    o = []
+    for i, t in enumerate(ten, 1):
+        lop = "xong" if i < buoc else ("dang" if i == buoc else "")
+        o.append(f'<div class="db-o {lop}"><span class="db-so">{"✓" if i < buoc else i}</span><b>{t}</b></div>')
+        if i < len(ten):
+            o.append(f'<div class="db-noi {"xong" if i < buoc else ""}"><i></i></div>')
+    return gon(f'<div class="dat-buoc">{"".join(o)}</div>')
+
+
+def tom_tat_sp(sp: dict, anh_b64: str) -> str:
+    hinh = (f'<img src="data:image/jpeg;base64,{anh_b64}" alt="">' if anh_b64
+            else '<div class="tt-sp-trong">🛒</div>')
+    return gon(f'<div class="tt-sp"><div class="tt-sp-hinh">{hinh}</div><div class="tt-sp-tt">'
+               f'<span class="tt-sp-dm">{e(sp["danh_muc"])}</span><b>{e(sp["ten"])}</b>'
+               f'<span class="tt-sp-gia">{so(sp["gia"])} đ<small> / {e(sp["don_vi"])}</small></span></div></div>')
+
+
+def tong_tien_dat(don_gia: int, so_luong: int) -> str:
+    return gon(f'<div class="tt-tong" key="{so_luong}"><div class="tt-dong-nho"><span>Tạm tính</span>'
+               f'<span>{so(don_gia)} đ × {so_luong}</span></div><div class="tt-dong-nho"><span>Phí giao hàng</span>'
+               f'<span class="mien-phi">Miễn phí</span></div><div class="tt-tong-so"><span>Tổng cộng</span>'
+               f'<b>{so(don_gia * so_luong)} đ</b></div></div>')
+
+
+def css_dat_hang() -> str:
+    return gon(f"""<style>
+@keyframes db-chay {{ from {{ background-position:0 0; }} to {{ background-position:40px 0; }} }}
+@keyframes db-nhip {{ 0%,100% {{ box-shadow:0 0 0 0 rgba(232,116,59,.45); }} 60% {{ box-shadow:0 0 0 9px rgba(232,116,59,0); }} }}
+@keyframes dh-bat {{ 0% {{ transform:scale(.6); opacity:0; }} 70% {{ transform:scale(1.08); opacity:1; }} 100% {{ transform:scale(1); }} }}
+@keyframes dh-hien {{ from {{ opacity:0; transform:translateY(10px); }} to {{ opacity:1; transform:none; }} }}
+@keyframes dh-loe {{ 0% {{ left:-60%; }} 55%,100% {{ left:130%; }} }}
+.dat-buoc {{ display:flex; align-items:center; gap:8px; padding:4px 2px 14px; }}
+.db-o {{ display:flex; align-items:center; gap:8px; white-space:nowrap; color:#9AA394; font-size:.88rem; }}
+.db-o b {{ font-weight:700; }}
+.db-so {{ width:30px; height:30px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-weight:900;
+    background:#EEF1EA; color:#8A9384; transition:all .3s ease; }}
+.db-o.xong {{ color:#2F6B22; }} .db-o.xong .db-so {{ background:#46A033; color:#fff; }}
+.db-o.dang {{ color:#C2410C; }} .db-o.dang b {{ font-weight:900; }}
+.db-o.dang .db-so {{ background:linear-gradient(135deg,#F59E0B,#E8743B); color:#fff; animation:db-nhip 1.8s ease-out infinite; }}
+.db-noi {{ flex:1; height:4px; border-radius:4px; background:#EEF1EA; overflow:hidden; min-width:20px; }}
+.db-noi.xong i {{ display:block; height:100%; background:repeating-linear-gradient(90deg,#46A033 0 14px,#6CC452 14px 20px);
+    background-size:40px 100%; animation:db-chay 1s linear infinite; }}
+.st-key-dd_tom_tat {{ background:linear-gradient(180deg,#FFFDF8,#FFF6EA); border:1px solid #F3E2C6; border-radius:22px;
+    padding:14px 16px 10px; box-shadow:0 18px 34px -26px rgba(150,90,20,.7); animation:dh-hien .4s ease both; gap:.6rem !important; }}
+.tt-sp {{ display:flex; gap:14px; align-items:center; }}
+.tt-sp-hinh {{ flex:none; width:96px; height:96px; border-radius:18px; overflow:hidden; background:#F4EFE4;
+    box-shadow:0 10px 18px -12px rgba(0,0,0,.45); transition:transform .3s ease; }}
+.tt-sp-hinh:hover {{ transform:scale(1.06) rotate(-2deg); }}
+.tt-sp-hinh img {{ width:100%; height:100%; object-fit:cover; display:block; }}
+.tt-sp-trong {{ font-size:2.4rem; display:flex; align-items:center; justify-content:center; height:100%; }}
+.tt-sp-tt {{ display:flex; flex-direction:column; gap:3px; min-width:0; }}
+.tt-sp-dm {{ align-self:flex-start; font-size:.7rem; font-weight:800; color:#2F6B22; background:#E7F5DF; padding:2px 9px; border-radius:999px; }}
+.tt-sp-tt b {{ font-size:1.08rem; color:{CHU}; line-height:1.3; }}
+.tt-sp-gia {{ font-weight:900; color:#C2410C; font-size:1.02rem; }} .tt-sp-gia small {{ color:{CHU_PHU}; font-weight:600; font-size:.78rem; }}
+.st-key-dd_tom_tat [data-testid="stNumberInput"] input {{ font-size:1.05rem !important; font-weight:800 !important; text-align:center; }}
+.tt-tong {{ border-top:1.5px dashed #EAD9BC; padding-top:10px; }}
+.tt-dong-nho {{ display:flex; justify-content:space-between; font-size:.86rem; color:#6B7A64; padding:2px 0; }}
+.mien-phi {{ color:#15803D; font-weight:800; }}
+.tt-tong-so {{ display:flex; justify-content:space-between; align-items:baseline; margin-top:6px; }}
+.tt-tong-so span {{ font-weight:800; color:{CHU}; }}
+.tt-tong-so b {{ font-size:1.6rem; font-weight:900; color:#C2410C; display:inline-block; animation:dh-bat .45s cubic-bezier(.2,.9,.3,1.3) both; }}
+.st-key-dd_o_giao {{ background:#fff; border:1px solid #E6EEE1; border-radius:22px; padding:16px 18px 12px;
+    box-shadow:0 18px 34px -26px rgba(30,60,30,.75); animation:dh-hien .45s ease .05s both; gap:.55rem !important; }}
+.dh-td {{ font-weight:900; font-size:1.05rem; color:{CHU}; }}
+.st-key-dd_o_giao label p {{ font-size:.9rem !important; font-weight:700 !important; color:#4E5E48 !important; }}
+.st-key-dd_o_giao input, .st-key-dd_o_giao textarea {{ font-size:1rem !important; }}
+.st-key-dd_o_giao [data-baseweb="input"], .st-key-dd_o_giao [data-baseweb="textarea"] {{ border-radius:14px !important;
+    background:#F7F9F5 !important; border:1.5px solid transparent !important; transition:border-color .2s ease, box-shadow .2s ease; }}
+.st-key-dd_o_giao [data-baseweb="input"]:focus-within, .st-key-dd_o_giao [data-baseweb="textarea"]:focus-within {{
+    border-color:#F59E0B !important; box-shadow:0 0 0 4px rgba(245,158,11,.18); background:#fff !important; }}
+.st-key-dd_tao_don button {{ position:relative; overflow:hidden; min-height:52px; border:none !important; border-radius:16px !important;
+    background:linear-gradient(135deg,#F59E0B,#EA580C) !important; box-shadow:0 14px 26px -14px rgba(234,88,12,.95) !important;
+    transition:transform .2s ease !important; }}
+.st-key-dd_tao_don button p {{ color:#fff !important; font-weight:900 !important; font-size:1.05rem !important; }}
+.st-key-dd_tao_don button:hover {{ transform:translateY(-2px); }}
+.st-key-dd_tao_don button:after {{ content:""; position:absolute; top:0; bottom:0; width:40%; left:-60%;
+    background:linear-gradient(100deg,transparent,rgba(255,255,255,.45),transparent); animation:dh-loe 3s ease-in-out infinite; }}
+.st-key-dd_quay_lai button {{ border-radius:14px !important; border:1.5px solid #E1E8DC !important; background:#fff !important; }}
+.st-key-dd_quay_lai button p {{ color:#4E5E48 !important; font-weight:700 !important; }}
+.dh-cam {{ font-size:.75rem; color:#8A9384; text-align:center; }}
+@media (max-width: 640px) {{ .db-o b {{ display:none; }} .db-o.dang b {{ display:inline; }} }}
+</style>""")

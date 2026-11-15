@@ -1176,6 +1176,7 @@ def hop_dat_hang(sp_id: int):
     ma = st.session_state.get("dd_ma_don")
     d = dd.lay_don_cho(ma) if ma else None
     if d and d["trang_thai"] == "cho":                       # bước 2: thanh toán (chế độ thử)
+        html(gd.css_dat_hang() + gd.thanh_buoc_dat(3))
         trai, phai = st.columns([1, 1.5], vertical_alignment="center")
         with trai:
             html(gd.qr_mau(d["ma_don"]))
@@ -1210,6 +1211,7 @@ def hop_dat_hang(sp_id: int):
         return
     cac_anh = [a for _, a in dd.anh_san_pham(sp_id)]
     if st.session_state.get("dd_buoc") != "dat":           # bước 0: xem chi tiết sản phẩm
+        html(gd.css_dat_hang() + gd.thanh_buoc_dat(1))
         trai, phai = st.columns([1, 1.15], gap="large")
         with trai:
             if cac_anh:
@@ -1232,27 +1234,37 @@ def hop_dat_hang(sp_id: int):
         t3.markdown(sp.get("luu_y") or "Đọc kỹ nhãn trước khi dùng. Để xa tầm tay trẻ em.")
         st.caption("Liều lượng chỉ để tham khảo — luôn làm theo nhãn trên bao bì và hướng dẫn của cán bộ khuyến nông địa phương.")
         return
-    if st.button("← Quay lại xem sản phẩm", key="dd_quay_lai"):     # bước 1: điền thông tin giao hàng
-        st.session_state.dd_buoc = "xem"
-        st.rerun(scope="fragment")
-    html(gd.the_san_pham(sp, anh_nho_b64(cac_anh[0], 480) if cac_anh else ""))
+    # ---------------- bước 1: thông tin giao hàng (gọn: tóm tắt bên trái, điền bên phải)
+    html(gd.css_dat_hang() + gd.thanh_buoc_dat(2))
     hs = ho_so_hien_tai()
-    with st.form("dd_form_dat"):
-        c1, c2 = st.columns([1, 2])
-        sl = c1.number_input(f"Số lượng ({sp['don_vi']})", min_value=1, max_value=999, value=1, step=1)
-        c2.markdown(f"<div style='padding-top:30px'>Tạm tính: <b style='color:#C2410C;font-size:1.2rem'>"
-                    f"{gd.so(sp['gia'])} đ × số lượng</b></div>", unsafe_allow_html=True)
-        ho_ten = st.text_input("Họ tên người nhận", value=hs.get("ho_ten") or st.session_state.nguoi_dung["ho_ten"])
-        sdt = st.text_input("Số điện thoại", value=hs.get("so_dien_thoai") or "", placeholder="0912 345 678")
-        dia_chi = st.text_input("Địa chỉ giao hàng", value=hs.get("tinh") or "",
-                                placeholder="Số nhà / ấp, xã, huyện, tỉnh")
-        ghi_chu = st.text_input("Ghi chú (không bắt buộc)", placeholder="Ví dụ: giao buổi sáng")
-        if st.form_submit_button("Tạo đơn hàng", type="primary", width="stretch"):
-            ok, kq = dd.tao_don_cho(ND_ID, sp_id, sl, ho_ten, sdt, dia_chi, ghi_chu)
-            if ok:
-                st.session_state.dd_ma_don = kq
-                st.rerun(scope="fragment")
-            st.error(kq)
+    trai, phai = st.columns([1, 1.45], gap="large")
+    with trai:
+        with st.container(key="dd_tom_tat"):
+            html(gd.tom_tat_sp(sp, anh_nho_b64(cac_anh[0], 300) if cac_anh else ""))
+            sl = st.number_input(f"Số lượng ({sp['don_vi']})", min_value=1, max_value=999, value=1, step=1,
+                                 key=f"dd_sl_{sp_id}")
+            html(gd.tong_tien_dat(sp["gia"], int(sl)))
+        if st.button("← Xem lại sản phẩm", key="dd_quay_lai", width="stretch"):
+            st.session_state.dd_buoc = "xem"
+            st.rerun(scope="fragment")
+    with phai:
+        with st.container(key="dd_o_giao"):
+            html('<div class="dh-td">🚚 Thông tin nhận hàng</div>')
+            ho_ten = st.text_input("👤 Họ tên người nhận", key="dd_ho_ten",
+                                   value=hs.get("ho_ten") or st.session_state.nguoi_dung["ho_ten"])
+            sdt = st.text_input("📞 Số điện thoại", key="dd_sdt", value=hs.get("so_dien_thoai") or "",
+                                placeholder="0912 345 678")
+            dia_chi = st.text_area("📍 Địa chỉ giao hàng", key="dd_dia_chi", value=hs.get("tinh") or "", height=78,
+                                   placeholder="Số nhà / ấp, xã, huyện, tỉnh")
+            ghi_chu = st.text_input("📝 Ghi chú (không bắt buộc)", key="dd_ghi_chu", placeholder="Ví dụ: giao buổi sáng")
+            if st.button(f"🛒  Xác nhận đặt hàng · {gd.so(sp['gia'] * int(sl))} đ", type="primary", width="stretch",
+                         key="dd_tao_don"):
+                ok, kq = dd.tao_don_cho(ND_ID, sp_id, sl, ho_ten, sdt, dia_chi, ghi_chu)
+                if ok:
+                    st.session_state.dd_ma_don = kq
+                    st.rerun(scope="fragment")
+                st.error(kq)
+            html('<div class="dh-cam">🔒 Thông tin chỉ dùng để giao hàng · ✅ Chế độ thử: chưa thu tiền thật</div>')
 
 
 @st.dialog("Sản phẩm", width="large")
