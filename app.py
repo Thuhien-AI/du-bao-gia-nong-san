@@ -1529,6 +1529,49 @@ def trang_dien_dan():
 
 TRANG_CON = {"vi": trang_vi, "vip": trang_vip, "tro_ly": trang_tro_ly, "ca_nhan": trang_ca_nhan,
              "nong_trai": trang_nong_trai, "dien_dan": trang_dien_dan}
+
+
+def dieu_huong_nhanh():
+    """Chuyển trang KHÔNG tải lại cả trang web (nhanh hơn nhiều, nhất là trên Streamlit Cloud).
+    Các nút ẩn bên dưới làm việc chuyển trang; một đoạn JavaScript bắt cú bấm vào các đường link
+    ?trang=... rồi bấm hộ nút ẩn tương ứng."""
+    with st.container(key="nav_an"):
+        for ma in ["trang_chu", *TRANG_CON]:
+            if st.button(ma, key=f"nav_{ma}"):
+                st.query_params.clear()
+                if ma != "trang_chu":
+                    st.query_params["trang"] = ma
+                st.rerun()
+    html("<style>.st-key-nav_an { display:none !important; }</style>")
+    components.html("""<script>
+    (function () {
+      const w = window.parent, d = w.document;
+      if (d.__bnDieuHuong) return;
+      d.__bnDieuHuong = true;
+      d.addEventListener("click", function (e) {
+        if (e.ctrlKey || e.metaKey || e.shiftKey || e.button !== 0) return;   // mở tab mới thì để bình thường
+        const a = e.target.closest && e.target.closest("a");
+        if (!a) return;
+        const h = a.getAttribute("href") || "";
+        if (!h.startsWith("?")) return;
+        const p = new URLSearchParams(h.slice(1));
+        let dich = p.get("trang");
+        if (!dich) {
+          const khoa = [...p.keys()];
+          if (khoa.length === 0 || (khoa.length === 1 && khoa[0] === "ns")) dich = "trang_chu"; else return;
+        }
+        const nut = d.querySelector(".st-key-nav_" + dich + " button");
+        if (!nut) return;
+        e.preventDefault(); e.stopPropagation();
+        nut.click();
+        const cuon = d.querySelector('[data-testid="stMain"]') || d.scrollingElement;
+        if (cuon) cuon.scrollTo({ top: 0, behavior: "smooth" });
+      }, true);
+    })();
+    </script>""", height=0)
+
+
+dieu_huong_nhanh()
 if st.query_params.get("trang") in TRANG_CON:
     ve_thanh_tren(MAC_DINH)
     TRANG_CON[st.query_params.get("trang")]()
