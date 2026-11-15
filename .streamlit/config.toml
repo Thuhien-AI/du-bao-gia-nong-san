@@ -1,0 +1,15 @@
+# Màu sắc giao diện (lấy từ logo bồ nông & bông lúa)
+[theme]
+base = "light"
+primaryColor = "#E8743B"
+backgroundColor = "#FFFFFF"
+secondaryBackgroundColor = "#F6F3EC"
+textColor = "#22301F"
+font = "sans serif"
+
+[client]
+toolbarMode = "minimal"
+
+# Giới hạn ảnh tải lên tối đa 5 MB
+[server]
+maxUploadSize = 5
