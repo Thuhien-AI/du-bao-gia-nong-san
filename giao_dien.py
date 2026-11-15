@@ -5,6 +5,8 @@ Mỗi hàm trả về một đoạn HTML; app.py chỉ việc đặt chúng lên
 """
 
 import html as _html
+import math
+import random
 
 import pandas as pd
 
@@ -2061,8 +2063,192 @@ def css_ca_nhan() -> str:
 
 
 # ================================================================ NÔNG TRẠI BỒ NÔNG
+# ---------------- Vẽ cây trưởng thành giống cây thật (lá có khối, bóng sáng, hạt/trái căng mọng)
+
+VIEN = 'stroke="#1E4D16" stroke-width=".6" stroke-opacity=".55"'
+
+def _la_dai(x0, y0, dx, dy, cong, rong, fill, vien=True):
+    """Lá dài cong (lúa): gốc (x0,y0) -> ngọn (x0+dx, y0+dy), độ cong 'cong'."""
+    mx, my = x0 + dx * .5 + cong, y0 + dy * .5
+    nx, ny = -dy, dx
+    L = math.hypot(nx, ny) or 1
+    nx, ny = nx / L * rong / 2, ny / L * rong / 2
+    return (f'<path d="M{x0 - nx:.1f} {y0 - ny:.1f} Q{mx - nx * 1.6:.1f} {my - ny * 1.6:.1f} {x0 + dx:.1f} {y0 + dy:.1f} '
+            f'Q{mx + nx * 1.6:.1f} {my + ny * 1.6:.1f} {x0 + nx:.1f} {y0 + ny:.1f}Z" fill="{fill}" '
+            + (VIEN if vien else '') + '/>')
+
+def defs_chung():
+    return ('<defs>'
+            '<linearGradient id="g_luaXanh" x1="0" y1="1" x2="0" y2="0"><stop offset="0" stop-color="#2E7D32"/><stop offset="1" stop-color="#8BD45E"/></linearGradient>'
+            '<linearGradient id="g_luaXanh2" x1="0" y1="1" x2="0" y2="0"><stop offset="0" stop-color="#1F6B24"/><stop offset="1" stop-color="#5DBB46"/></linearGradient>'
+            '<linearGradient id="g_luaVang" x1="0" y1="1" x2="0" y2="0"><stop offset="0" stop-color="#9C7A1E"/><stop offset="1" stop-color="#F3D36B"/></linearGradient>'
+            '<linearGradient id="g_luaVang2" x1="0" y1="1" x2="0" y2="0"><stop offset="0" stop-color="#7E6216"/><stop offset="1" stop-color="#D9B443"/></linearGradient>'
+            '<radialGradient id="g_hatVang" cx="35%" cy="30%" r="75%"><stop offset="0" stop-color="#FFF1B0"/><stop offset=".5" stop-color="#F2C230"/><stop offset="1" stop-color="#B98512"/></radialGradient>'
+            '<radialGradient id="g_hatXanh" cx="35%" cy="30%" r="75%"><stop offset="0" stop-color="#E9F7B8"/><stop offset=".6" stop-color="#A9CF52"/><stop offset="1" stop-color="#6E9A2C"/></radialGradient>'
+            '<radialGradient id="g_laTim" cx="40%" cy="25%" r="85%"><stop offset="0" stop-color="#8EDC63"/><stop offset=".55" stop-color="#43A33A"/><stop offset="1" stop-color="#1F6B24"/></radialGradient>'
+            '<radialGradient id="g_laTim2" cx="40%" cy="25%" r="85%"><stop offset="0" stop-color="#6CCB52"/><stop offset=".6" stop-color="#2F8A2B"/><stop offset="1" stop-color="#175A1C"/></radialGradient>'
+            '<linearGradient id="g_tru" x1="0" x2="1"><stop offset="0" stop-color="#5C3418"/><stop offset=".45" stop-color="#A9784A"/><stop offset="1" stop-color="#4E2C14"/></linearGradient>'
+            '<radialGradient id="g_do" cx="35%" cy="30%" r="70%"><stop offset="0" stop-color="#FF9A8A"/><stop offset=".45" stop-color="#E0282E"/><stop offset="1" stop-color="#8E0F1A"/></radialGradient>'
+            '<radialGradient id="g_cam" cx="35%" cy="30%" r="70%"><stop offset="0" stop-color="#FFD39A"/><stop offset=".5" stop-color="#F08A24"/><stop offset="1" stop-color="#A9500E"/></radialGradient>'
+            '<radialGradient id="g_xanhTrai" cx="35%" cy="30%" r="70%"><stop offset="0" stop-color="#D8F2A0"/><stop offset=".55" stop-color="#6DB33A"/><stop offset="1" stop-color="#3B7A1E"/></radialGradient>'
+            '<radialGradient id="g_laCP" cx="40%" cy="30%" r="80%"><stop offset="0" stop-color="#4FB043"/><stop offset=".6" stop-color="#1F7A2A"/><stop offset="1" stop-color="#0F4A18"/></radialGradient>'
+            '<radialGradient id="g_laCP2" cx="40%" cy="30%" r="80%"><stop offset="0" stop-color="#78C85A"/><stop offset=".6" stop-color="#2F8F33"/><stop offset="1" stop-color="#16591F"/></radialGradient>'
+            '</defs>')
+
+# ---------------- LÚA
+def _bong(x0, y0, h, chin, dai=1.0):
+    p0 = (x0, y0); p1 = (x0 + h * 9 * dai, y0 - 13 * dai); p2 = (x0 + h * 22 * dai, y0 + 14 * dai)
+    def P(t): return ((1-t)**2*p0[0]+2*(1-t)*t*p1[0]+t*t*p2[0], (1-t)**2*p0[1]+2*(1-t)*t*p1[1]+t*t*p2[1])
+    s = (f'<path d="M{p0[0]:.1f} {p0[1]:.1f} Q{p1[0]:.1f} {p1[1]:.1f} {p2[0]:.1f} {p2[1]:.1f}" '
+         f'stroke="{"#A07F22" if chin else "#6E9A2C"}" stroke-width="1.6" fill="none" stroke-linecap="round"/>')
+    g = "g_hatVang" if chin else "g_hatXanh"
+    for i in range(2, 19):
+        t = i / 18
+        x, y = P(t); x2, y2 = P(min(t + .02, 1))
+        goc = math.degrees(math.atan2(y2 - y, x2 - x))
+        for ph in (-1, 1):
+            gx, gy = x + ph * 1.5, y + 1.6
+            s += (f'<ellipse cx="{gx:.1f}" cy="{gy:.1f}" rx="1.9" ry="3.1" fill="url(#{g})" stroke="#8A6410" '
+                  f'stroke-width=".35" stroke-opacity=".6" transform="rotate({goc - 90 + ph * 28:.0f} {gx:.1f} {gy:.1f})"/>')
+    return s
+
+def svg_lua(chin):
+    r = random.Random(3)
+    s = ""
+    toi, sang = (("url(#g_luaVang2)", "url(#g_luaVang)") if chin else ("url(#g_luaXanh2)", "url(#g_luaXanh)"))
+    # lá lúa mảnh, dài, cong vòng ra ngoài (lớp sau đậm, lớp trước sáng)
+    for lop, fill in ((0, toi), (1, sang)):
+        n = 13
+        for k in range(n):
+            goc = -70 + k * (140 / (n - 1)) + r.uniform(-5, 5)
+            dai = (80 if lop == 0 else 70) - abs(goc) * .28 + r.uniform(-5, 5)
+            dx = math.sin(math.radians(goc)) * dai
+            dy = -math.cos(math.radians(goc)) * dai + abs(goc) * .32      # lá ngoài rủ ngọn xuống
+            s += _la_dai(60 + (k - n / 2) * .5, 101, dx, dy, goc * .22 + r.uniform(-3, 3), 2.7 if lop else 3.0, fill)
+    ngon = ([(-12, 26, -1, 1.05), (-3, 20, -1, 1.1), (6, 20, 1, 1.1), (15, 26, 1, 1.05), (-20, 36, -1, .9), (23, 36, 1, .9)]
+            if chin else [(-8, 24, -1, .85), (8, 24, 1, .85)])
+    for dx, y, h, d in ngon:
+        s += (f'<path d="M{60 + dx * .25:.1f} 100 Q{60 + dx * .6:.1f} 62 {60 + dx:.1f} {y}" '
+              f'stroke="{"#B8952F" if chin else "#3E9B2F"}" stroke-width="1.8" fill="none"/>')
+        s += _bong(60 + dx, y, h, chin, d)
+    s += '<ellipse cx="60" cy="101" rx="13" ry="3" fill="#3B220E" opacity=".35"/>'
+    return s
+
+# ---------------- HỒ TIÊU
+def _la_tim(x, y, dai, goc, g):
+    return (f'<g transform="translate({x:.1f} {y:.1f}) rotate({goc:.0f})">'
+            f'<path d="M0 0 C{-dai*.62:.1f} {-dai*.1:.1f} {-dai*.58:.1f} {-dai*.88:.1f} 0 {-dai:.1f} '
+            f'C{dai*.58:.1f} {-dai*.88:.1f} {dai*.62:.1f} {-dai*.1:.1f} 0 0Z" fill="url(#{g})" {VIEN}/>'
+            f'<path d="M0 -1 Q{dai*.05:.1f} {-dai*.5:.1f} 0 {-dai*.92:.1f}" stroke="#D8F5B0" stroke-width=".7" opacity=".7" fill="none"/>'
+            f'<path d="M0 {-dai*.3:.1f} Q{-dai*.2:.1f} {-dai*.45:.1f} {-dai*.32:.1f} {-dai*.62:.1f} M0 {-dai*.3:.1f} '
+            f'Q{dai*.2:.1f} {-dai*.45:.1f} {dai*.32:.1f} {-dai*.62:.1f}" stroke="#D8F5B0" stroke-width=".45" opacity=".5" fill="none"/>'
+            f'<ellipse cx="{-dai*.18:.1f}" cy="{-dai*.62:.1f}" rx="{dai*.1:.1f}" ry="{dai*.22:.1f}" fill="#fff" opacity=".22"/></g>')
+
+def _gie(x, y, dai, chin, r):
+    s = f'<path d="M{x} {y} q.8 2.5 0 4.5" stroke="#4E7A22" stroke-width="1.1" fill="none"/>'
+    n = int(dai / 2.4)
+    for i in range(n):
+        t = i / max(n - 1, 1)
+        g = ("g_xanhTrai" if t < .3 else ("g_cam" if t < .55 else "g_do")) if chin else "g_xanhTrai"
+        cy = y + 5.5 + i * 2.3
+        rong = 3.4 * (1 - t * .45)
+        for dx in (-rong / 2, rong / 2):
+            s += f'<circle cx="{x + dx + r.uniform(-.3, .3):.1f}" cy="{cy:.1f}" r="1.75" fill="url(#{g})"/>'
+    return s
+
+def svg_tieu(chin):
+    r = random.Random(5)
+    s = ('<rect x="54" y="4" width="12" height="98" rx="3" fill="url(#g_tru)"/>'
+         '<rect x="53" y="3" width="14" height="4" rx="2" fill="#6B3F1F"/>')
+    s += ''.join(f'<path d="M55 {y} q5 2.5 10 0" stroke="#3E220E" stroke-width=".9" fill="none" opacity=".5"/>' for y in range(12, 100, 9))
+    s += ('<path d="M60 100 C46 92 74 84 60 76 C46 68 74 60 60 52 C46 44 74 36 60 28 C48 22 70 14 60 8" '
+          'stroke="#3E6B1A" stroke-width="2.6" fill="none" stroke-linecap="round"/>')
+    la = []
+    for i, y in enumerate(range(94, 10, -9)):
+        ph = -1 if i % 2 else 1
+        la.append((60 + ph * 5, y, 15 + r.uniform(-1.5, 2) - (96 - y) * .03, ph * (55 + r.uniform(-10, 15)), "g_laTim" if i % 3 else "g_laTim2"))
+        la.append((60 - ph * 4, y - 3, 12 + r.uniform(-1, 1.5), -ph * (95 + r.uniform(-10, 10)), "g_laTim2"))
+    # lá sau trước, lá trước sau
+    for x, y, d, g, gid in la[1::2]:
+        s += _la_tim(x, y, d, g, gid)
+    for x, y, d, g, gid in la[0::2]:
+        s += _la_tim(x, y, d, g, gid)
+    gie = ([(41, 74), (79, 66), (39, 56), (81, 48), (42, 38), (78, 30), (36, 86), (84, 82)] if chin
+           else [(42, 70), (78, 58), (41, 46), (79, 36)])
+    for x, y in gie:
+        s += _gie(x, y, 19 if chin else 14, chin, r)
+    return s
+
+# ---------------- CÀ PHÊ
+def _la_cp(x, y, dai, goc, g):
+    return (f'<g transform="translate({x:.1f} {y:.1f}) rotate({goc:.0f})">'
+            f'<path d="M0 0 C{dai*.25:.1f} {-dai*.36:.1f} {dai*.78:.1f} {-dai*.32:.1f} {dai:.1f} 0 '
+            f'C{dai*.78:.1f} {dai*.32:.1f} {dai*.25:.1f} {dai*.36:.1f} 0 0Z" fill="url(#{g})" {VIEN}/>'
+            f'<path d="M1 0 L{dai*.93:.1f} 0" stroke="#BFE8A0" stroke-width=".6" opacity=".55"/>'
+            f'<path d="M{dai*.18:.1f} {-dai*.14:.1f} Q{dai*.5:.1f} {-dai*.25:.1f} {dai*.8:.1f} {-dai*.08:.1f}" '
+            f'stroke="#fff" stroke-width="1" opacity=".3" fill="none"/></g>')
+
+def _chum(x, y, chin, r, n=6):
+    s = ""
+    for i in range(n):
+        dx, dy = r.uniform(-3.6, 3.6), r.uniform(-2, 2.4)
+        g = (r.choice(["g_do", "g_do", "g_do", "g_cam", "g_xanhTrai"]) if chin else "g_xanhTrai")
+        s += f'<circle cx="{x + dx:.1f}" cy="{y + dy:.1f}" r="2.7" fill="url(#{g})" stroke="#5A0A12" stroke-width=".3" stroke-opacity=".4"/>'
+        s += f'<circle cx="{x + dx - .8:.1f}" cy="{y + dy - .9:.1f}" r=".75" fill="#fff" opacity=".6"/>'
+    return s
+
+def svg_ca_phe(chin):
+    r = random.Random(11)
+    s = '<path d="M60 104 C57 92 62 84 60 70" stroke="#5C3A1E" stroke-width="5" fill="none" stroke-linecap="round"/>'
+    # tán cây tròn: lá xếp theo vòng ellipse, lớp sau tối -> lớp trước sáng
+    cx, cy, rx, ry = 60, 50, 44, 38
+    la = []
+    for lop in range(3):
+        for k in range(52 - lop * 8):
+            a = r.uniform(0, 2 * math.pi)
+            rr = math.sqrt(r.uniform(0, 1)) * (1 - lop * .12)
+            x = cx + math.cos(a) * rx * rr
+            y = cy + math.sin(a) * ry * rr * .95
+            goc = math.degrees(a) + r.uniform(-35, 35)
+            la.append((lop, x, y, 12.5 - lop * .8 + r.uniform(-1, 1.5), goc))
+    for lop, x, y, d, goc in la:
+        if lop == 0:
+            s += _la_cp(x, y, d, goc, "g_laCP")
+    cho = [(34, 58), (50, 42), (72, 44), (86, 56), (58, 30), (42, 72), (78, 72), (60, 60), (28, 44), (92, 42), (50, 84), (70, 86)]
+    chum = cho if chin else cho[:6]
+    for lop, x, y, d, goc in la:
+        if lop >= 1:
+            s += _la_cp(x, y, d, goc, "g_laCP2" if lop == 2 else "g_laCP")
+    for x, y in chum:
+        s += _chum(x, y, chin, r, 7 if chin else 4)
+    s += '<ellipse cx="60" cy="103" rx="14" ry="3" fill="#3B220E" opacity=".35"/>'
+    return s
+
+
+# Ảnh cây thật (image/cay/*.webp, đã tách nền) cho giai đoạn đang lớn và chín
+_THU_MUC_ANH_CAY = __import__("pathlib").Path(__file__).parent / "image" / "cay"
+_ANH_CAY = {}
+
+
+def _anh_cay_that(cay: str, giai_doan: int):
+    ten = {"lua": "lua", "ho_tieu": "tieu", "ca_phe": "ca_phe"}.get(cay)
+    if not ten or giai_doan < 2:
+        return None
+    khoa = f"{ten}_{'chin' if giai_doan == 3 else 'dang_lon'}"
+    if khoa not in _ANH_CAY:
+        f = _THU_MUC_ANH_CAY / f"{khoa}.webp"
+        _ANH_CAY[khoa] = __import__("base64").b64encode(f.read_bytes()).decode() if f.exists() else ""
+    if not _ANH_CAY[khoa]:
+        return None
+    return (f'<img class="hinh-cay anh-that cay-{cay} gd{giai_doan}" alt="" '
+            f'src="data:image/webp;base64,{_ANH_CAY[khoa]}">')
+
+
 def _svg_cay(cay: str, giai_doan: int) -> str:
-    """Hình cây theo loại & giai đoạn (0 hạt · 1 mầm · 2 lớn · 3 chín)."""
+    """Hình cây theo loại & giai đoạn (0 hạt · 1 mầm · 2 lớn · 3 chín). Có ảnh thật thì dùng ảnh thật."""
+    anh = _anh_cay_that(cay, giai_doan)
+    if anh:
+        return anh
     if giai_doan == 0:
         than = ('<ellipse cx="60" cy="96" rx="9" ry="6" fill="#8B5A2B"/><ellipse cx="57" cy="94" rx="3" ry="1.6" '
                 'fill="#C08A55"/><path d="M60 90 q2 -6 0 -10" stroke="#5DBB46" stroke-width="2.5" fill="none" '
@@ -2071,31 +2257,12 @@ def _svg_cay(cay: str, giai_doan: int) -> str:
         than = ('<path d="M60 98 V70" stroke="#3E9B2F" stroke-width="4" stroke-linecap="round"/>'
                 '<path d="M60 78 C46 76 40 66 42 58 C52 60 59 67 60 78Z" fill="#6CCB52"/>'
                 '<path d="M60 74 C72 70 78 60 76 52 C66 55 60 63 60 74Z" fill="#4FB43A"/>')
-    elif cay == "lua":
-        mau, hat = ("#4FB43A", "") if giai_doan == 2 else ("#E3B23C", "#C98A12")
-        than = "".join(f'<path d="M60 100 Q{60 + dx * .4} 70 {60 + dx} {38 + abs(dx) * .4}" stroke="{mau}" '
-                       f'stroke-width="4" fill="none" stroke-linecap="round"/>' for dx in (-26, -13, 0, 13, 26))
-        if giai_doan == 3:
-            than += "".join(f'<g transform="translate({60 + dx} {40 + abs(dx) * .4}) rotate({dx * 2.4})">'
-                            + "".join(f'<ellipse cx="{i * 2.2}" cy="{i * 4.2}" rx="2.6" ry="3.6" fill="{hat}"/>'
-                                      for i in range(5)) + "</g>" for dx in (-26, -13, 0, 13, 26))
+    elif cay == "lua":                       # cây lớn / chín: vẽ chi tiết như cây thật
+        than = defs_chung() + svg_lua(giai_doan == 3)
     elif cay == "ho_tieu":
-        than = ('<rect x="57" y="30" width="6" height="70" rx="3" fill="#8B5A2B"/>'
-                '<path d="M60 98 C48 88 72 78 60 68 C48 58 72 48 60 36" stroke="#3E9B2F" stroke-width="3.5" fill="none"/>'
-                + "".join(f'<ellipse cx="{x}" cy="{y}" rx="9" ry="5.5" fill="#4FB43A" transform="rotate({r} {x} {y})"/>'
-                          for x, y, r in [(46, 84, -25), (74, 76, 25), (46, 62, -25), (74, 54, 25), (50, 42, -20)]))
-        if giai_doan == 3:
-            than += "".join(f'<circle cx="{x + i % 2 * 4}" cy="{y + i * 3.4}" r="2.6" fill="#D7263D"/>'
-                            for x, y in [(66, 82), (50, 68), (66, 58)] for i in range(5))
-    else:   # cà phê
-        than = ('<path d="M60 100 V62" stroke="#6B4423" stroke-width="5" stroke-linecap="round"/>'
-                '<ellipse cx="60" cy="58" rx="34" ry="24" fill="#2F8A2B"/><ellipse cx="44" cy="66" rx="18" ry="13" '
-                'fill="#3E9B2F"/><ellipse cx="76" cy="66" rx="18" ry="13" fill="#3E9B2F"/><ellipse cx="60" cy="46" '
-                'rx="20" ry="14" fill="#4FB43A"/>')
-        if giai_doan == 3:
-            than += "".join(f'<circle cx="{x}" cy="{y}" r="3.6" fill="#C81E3A"/><circle cx="{x - 1}" cy="{y - 1}" '
-                            f'r="1.1" fill="#FF8A8A"/>' for x, y in [(42, 62), (50, 70), (58, 54), (68, 64), (78, 58),
-                                                                    (64, 44), (48, 50), (74, 72), (56, 66)])
+        than = defs_chung() + svg_tieu(giai_doan == 3)
+    else:
+        than = defs_chung() + svg_ca_phe(giai_doan == 3)
     return f'<svg viewBox="0 0 120 110" class="hinh-cay gd{giai_doan}">{than}</svg>'
 
 
@@ -2545,6 +2712,11 @@ def css_canh_nong_trai() -> str:
     margin-bottom:-30px; }}
 .luong .hinh-cay {{ width:190px; height:176px; transform-origin:50% 92%; animation:nt-dua 3.6s ease-in-out infinite; }}
 .luong.chin .hinh-cay {{ animation:nt-dua 3.6s ease-in-out infinite, nt-sang 2s ease-in-out infinite; }}
+.luong img.hinh-cay.anh-that {{ width:auto; height:200px; max-width:96%; object-fit:contain; object-position:50% 100%;
+    margin-bottom:6px; filter:drop-shadow(0 6px 6px rgba(40,25,10,.35)); }}
+.luong img.hinh-cay.anh-that.cay-ho_tieu {{ height:236px; }}
+.luong img.hinh-cay.anh-that.cay-lua {{ height:190px; }}
+.luong.chin img.hinh-cay.anh-that {{ animation:nt-dua 3.6s ease-in-out infinite, nt-sang 2s ease-in-out infinite; }}
 .luong .dat {{ position:relative; z-index:2; width:88%; height:70px; border-radius:50% / 46%;
     background:radial-gradient(ellipse at 50% 35%, #A97A4C 0%, #845630 60%, #5F3B1D 100%);
     box-shadow:0 14px 18px -10px rgba(40,20,5,.6), inset 0 -6px 10px rgba(0,0,0,.25); overflow:hidden; }}
