@@ -310,9 +310,14 @@ def cau_noi_ve():
       const m = w.document.cookie.match(/(?:^|; ){TEN_COOKIE}=([^;]+)/);
       const u = new URL(w.location.href);
       if (m && m[1] && !u.searchParams.has("ve")) {{
-        w.document.body.style.opacity = "0";
         u.searchParams.set("ve", m[1]);
-        w.location.replace(u.toString());
+        // khung này bị "sandbox" nên không tự đổi trang được -> tạo 1 đường link trong trang chính rồi bấm
+        const a = w.document.createElement("a");
+        a.href = u.toString(); a.target = "_self"; a.style.display = "none";
+        w.document.body.appendChild(a);
+        w.document.body.style.opacity = "0";
+        setTimeout(() => {{ w.document.body.style.opacity = "1"; }}, 3000);   // phòng khi không chuyển được
+        a.click();
       }}
     }} catch (e) {{}}
     </script>""", height=0)
