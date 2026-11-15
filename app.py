@@ -18,6 +18,7 @@ import streamlit.components.v1 as components
 from PIL import Image
 
 import importlib
+import json
 
 import giao_dien as gd
 
@@ -49,6 +50,7 @@ NONG_SAN = {
     "Cà phê": "Robusta nhân xô · Tây Nguyên",
     "Hồ tiêu": "Tiêu đen · Tây Nguyên & Đông Nam Bộ",
 }
+MA_NS = {ten: ma for ten, ma in zip(NONG_SAN, ["lua", "ca_phe", "ho_tieu", "ns4", "ns5"])}   # mã ngắn cho nút ẩn
 TEN_NGAN = {"Lúa": "lúa", "Cà phê": "cà phê", "Hồ tiêu": "tiêu"}
 MOC_DU_BAO = [(1, "Ngày mai"), (7, "7 ngày tới"), (30, "30 ngày tới")]
 
@@ -1554,10 +1556,20 @@ def dieu_huong_nhanh():
                 if ma != "trang_chu":
                     st.query_params["trang"] = ma
                 st.rerun()
+        # chọn nông sản ở Trang chủ (Lúa / Cà phê / Hồ tiêu) cũng đổi ngay, không tải lại trang
+        for ten_ns, ma_ns in MA_NS.items():
+            if st.button(ten_ns, key=f"nav_ns_{ma_ns}"):
+                st.query_params.clear()
+                st.query_params["ns"] = ten_ns
+                st.session_state.nong_san = ten_ns
+                st.session_state.pop("loai_link", None)
+                st.session_state.pop("kv_link", None)
+                st.rerun()
     html("<style>.st-key-nav_an { display:none !important; }</style>")
     components.html("""<script>
     (function () {
       const w = window.parent, d = w.document;
+      d.__bnMaNs = """ + json.dumps(MA_NS, ensure_ascii=False) + """;
       if (d.__bnDieuHuong) return;
       d.__bnDieuHuong = true;
       d.addEventListener("click", function (e) {
@@ -1570,7 +1582,9 @@ def dieu_huong_nhanh():
         let dich = p.get("trang");
         if (!dich) {
           const khoa = [...p.keys()];
-          if (khoa.length === 0 || (khoa.length === 1 && khoa[0] === "ns")) dich = "trang_chu"; else return;
+          if (khoa.length === 0) dich = "trang_chu";
+          else if (khoa.length === 1 && khoa[0] === "ns" && (d.__bnMaNs || {})[p.get("ns")]) dich = "ns_" + d.__bnMaNs[p.get("ns")];
+          else return;
         }
         const nut = d.querySelector(".st-key-nav_" + dich + " button");
         if (!nut) return;
