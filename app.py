@@ -33,6 +33,7 @@ import phan_tich as pt
 import tro_ly_ai as ai
 import nong_trai as nt
 import dien_dan as dd
+import ho_tro as ht
 
 xt = importlib.reload(xt)
 vx = importlib.reload(vx)
@@ -40,6 +41,7 @@ pt = importlib.reload(pt)
 ai = importlib.reload(ai)
 nt = importlib.reload(nt)
 dd = importlib.reload(dd)
+ht = importlib.reload(ht)
 
 THU_MUC = Path(__file__).parent
 FILE_LOGO = THU_MUC / "image" / "iconapp.png"
@@ -161,7 +163,7 @@ def khu_cap_nhat(df):
 
 def chan_trang():
     html(f"""<div class="chan-trang">© {pd.Timestamp.today().year} · {TEN_APP} ·
-    Số liệu chỉ mang tính tham khảo.</div>""")
+    Số liệu chỉ mang tính tham khảo. · Hỗ trợ: <a class="ht-chan-mail" href="{ht.link_email()}">{ht.EMAIL_HO_TRO}</a></div>""")
 
 
 # ================================================================ ĐĂNG NHẬP / ĐĂNG KÝ
@@ -302,7 +304,9 @@ def trang_dang_nhap():
           d.documentElement.style.setProperty("--my", e.clientY + "px"); }); }
     </script>""", height=0)
     html(f'<div class="dn-chan">© {pd.Timestamp.today().year} · {TEN_APP} · '
-         "Mật khẩu được mã hoá an toàn</div>")
+         "Mật khẩu được mã hoá an toàn<br>Không đăng nhập được hoặc quên mật khẩu? Gửi email tới "
+         f'<a href="{ht.link_email("[Bồ Nông] Không đăng nhập được")}" style="color:inherit;font-weight:700">'
+         f'{ht.EMAIL_HO_TRO}</a></div>')
 
 
 def cau_noi_ve():
@@ -377,7 +381,8 @@ def ve_thanh_tren(nong_san_css: str):
     with o_chao:
         html(gd.thanh_tai_khoan(st.session_state.nguoi_dung["ho_ten"], "?" + urlencode({"ns": MAC_DINH}),
                                 vx.so_du(ND_ID), VIP, anh_nho_b64(ho_so_hien_tai().get("anh")),
-                                st.query_params.get("trang") == "ca_nhan"))
+                                st.query_params.get("trang") == "ca_nhan",
+                                ht.so_chua_doc(ND_ID) + (ht.so_can_xu_ly() if xt.la_quan_tri(ND_ID) else 0)))
     if st.query_params.get("trang") != "tro_ly":
         q = {"trang": "tro_ly"}
         for k in ("ns", "loai", "kv"):
@@ -1488,6 +1493,7 @@ def tab_cho():
 
 
 def tab_quan_tri():
+    quan_tri_ho_tro()
     quan_tri_dai_ly()
     st.markdown("#### 🚩 Nội dung bị ẩn do báo cáo")
     an = dd.ds_bi_an()
@@ -1681,7 +1687,8 @@ def trang_dien_dan():
                ("cho", "🛒", "Chợ nông nghiệp", tab_cho),
                ("dai_ly", "🏪", "Đại lý thu mua", tab_dai_ly)]
     if LA_QT:
-        so_an = dd.so_bi_an() + len(dd.ds_dai_ly(trang_thai="cho")) + len(dd.ds_bao_sai_dai_ly())
+        so_an = (dd.so_bi_an() + len(dd.ds_dai_ly(trang_thai="cho")) + len(dd.ds_bao_sai_dai_ly())
+                 + ht.so_can_xu_ly())
         cac_muc.append(("quan_tri", "🛡️", "Quản trị" + (f" · {so_an}" if so_an else ""), tab_quan_tri))
     chon = st.session_state.get("dd_tab", "bang_tin")
     if chon not in [m[0] for m in cac_muc]:
@@ -1696,8 +1703,191 @@ def trang_dien_dan():
                     st.rerun()
         dict((m[0], m[3]) for m in cac_muc)[chon]()
 
+# ================================================================ HỖ TRỢ KHÁCH HÀNG
+def hien_phieu(p: dict, ben: str):
+    """Nội dung 1 phiếu: cuộc trò chuyện + ảnh. ben = 'kh' (khách) | 'qt' (quản trị)."""
+    html(f'<div class="ht-dong-tieu"><div><span class="ht-ma">{gd.e(p["ma"])}</span> <b>{gd.e(p["tieu_de"])}</b>'
+         f'<small>{gd.e(p["loai"])} · {gd.e(p["phan"])} · gửi {p["tao_luc"]:%H:%M %d/%m/%Y}</small></div>'
+         f'<span class="ht-nhan tt-{gd._MAU_TT[p["trang_thai"]]}"><i></i>{gd.e(p["ten_tt"])}</span></div>')
+    for t in ht.tin_cua_phieu(p["id"], xem_noi_bo=(ben == "qt")):
+        html(gd.bong_tin_ht(t, p["ten_lh"]))
+    anh = ht.anh_cua_phieu(p["id"])
+    if anh:
+        st.caption(f"📷 {len(anh)} ảnh đính kèm")
+        luoi_anh(anh, f"ht{p['id']}")
+    ht.danh_dau_da_doc(p["id"], ben)
+
+
+@st.dialog("🎧 Phiếu hỗ trợ", width="large")
+def hop_phieu_kh(pid):
+    p = ht.lay_phieu(pid, ND_ID)
+    if not p:
+        st.error("Không tìm thấy phiếu.")
+        return
+    html(gd.css_ho_tro())
+    hien_phieu(p, "kh")
+    if p["trang_thai"] != "da_dong":
+        with st.form(f"ht_kh_tl_{pid}", clear_on_submit=True):
+            nd = st.text_area("Nhắn thêm cho nhân viên", height=80, placeholder="Bổ sung thông tin, hoặc trả lời câu hỏi của nhân viên…")
+            if st.form_submit_button("📨 Gửi", type="primary"):
+                ok, tb = ht.khach_nhan_tiep(ND_ID, pid, nd)
+                (bao if ok else st.error)(tb)
+                if ok:
+                    st.rerun()
+        if p["trang_thai"] == "da_tra_loi":
+            st.markdown("**Vấn đề đã được giải quyết?** Chấm điểm để đóng phiếu:")
+    if p["trang_thai"] == "da_tra_loi" or (p["trang_thai"] == "da_dong" and not p["sao"]):
+        sao = st.feedback("stars", key=f"ht_sao_{pid}")
+        nx = st.text_input("Nhận xét (không bắt buộc)", key=f"ht_nx_{pid}")
+        if st.button("✅ Đóng phiếu & gửi đánh giá", key=f"ht_dong_{pid}", type="primary", disabled=sao is None):
+            ok, tb = ht.khach_dong_va_cham(ND_ID, pid, (sao or 0) + 1, nx)
+            (bao if ok else st.error)(tb)
+            if ok:
+                st.rerun()
+    elif p["sao"]:
+        st.caption(f"Bạn đã chấm {'★' * p['sao']} – cảm ơn bạn!")
+
+
+def trang_ho_tro():
+    html(gd.css_ho_tro())
+    html(gd.dau_ho_tro(ht.EMAIL_HO_TRO, ht.link_email(), ht.trong_gio_lam(), ht.doc_cai_dat()))
+    html(gd.buoc_ho_tro())
+    trai, phai = st.columns([1, 1.2], gap="large")
+    with trai:
+        html(gd.muc_ht("💡", "Câu hỏi thường gặp", "Xem trước – có thể đã có câu trả lời"))
+        with st.container(key="ht_faq"):
+            for hoi, dap in ht.HOI_DAP:
+                with st.expander(hoi):
+                    st.write(dap)
+    with phai:
+        html(gd.muc_ht("✍️", "Gửi yêu cầu hỗ trợ", "Mô tả càng rõ, nhân viên giúp càng nhanh"))
+        if st.session_state.get("ht_vua_gui"):
+            st.success(st.session_state.pop("ht_vua_gui"), icon="🎫")
+        with st.container(key="ht_form"):
+            with st.form("ht_gui", clear_on_submit=True):
+                a1, a2 = st.columns(2)
+                loai = a1.selectbox("Bạn cần gì?", ht.LOAI, key="ht_loai")
+                phan = a2.selectbox("Thuộc phần nào của app?", ht.PHAN_APP, key="ht_phan")
+                tieu_de = st.text_input("Tiêu đề *", placeholder="VD: Điểm danh bị trừ xu", max_chars=120)
+                noi_dung = st.text_area("Mô tả chi tiết *", height=120,
+                                        placeholder="Chuyện gì xảy ra? Bạn đang làm gì thì gặp? Lúc mấy giờ?")
+                b1, b2 = st.columns(2)
+                lien_he = b1.text_input("Số điện thoại (không bắt buộc)", placeholder="Để nhân viên gọi khi cần")
+                anh = b2.file_uploader(f"Ảnh chụp màn hình (tối đa {ht.ANH_TOI_DA})", type=["png", "jpg", "jpeg", "webp"],
+                                       accept_multiple_files=True)
+                if st.form_submit_button("📨  Gửi yêu cầu", type="primary", width="stretch"):
+                    ok, tb, _ = ht.gui_phieu(ND_ID, st.session_state.nguoi_dung["ho_ten"], loai, phan, tieu_de,
+                                             noi_dung, lien_he, [f.getvalue() for f in (anh or [])][:ht.ANH_TOI_DA + 1])
+                    if ok:
+                        st.session_state.ht_vua_gui = tb
+                        st.rerun()
+                    st.error(tb)
+    ds = ht.ds_phieu_cua(ND_ID)
+    con_mo = sum(1 for p in ds if p["trang_thai"] != "da_dong")
+    html(gd.muc_ht("🎫", "Yêu cầu của tôi", f"{len(ds)} phiếu · {con_mo} đang mở" if ds else ""))
+    if not ds:
+        html('<div class="ht-rong"><div>📭</div>Bạn chưa gửi yêu cầu nào. Có gì cần giúp, cứ gửi ở trên nhé!</div>')
+    for p in ds:
+        with st.container(key=f"htp_{p['id']}"):
+            o1, o2 = st.columns([6, 1], vertical_alignment="center")
+            with o1:
+                html(gd.the_phieu(p, False, bool(p["kh_chua_doc"])))
+            if o2.button("Xem" + (" · mới" if p["kh_chua_doc"] else " →"), key=f"ht_mo_{p['id']}", width="stretch",
+                         type="primary" if p["kh_chua_doc"] else "secondary"):
+                hop_phieu_kh(p["id"])
+
+
+@st.dialog("🎧 Xử lý phiếu", width="large")
+def hop_phieu_qt(pid):
+    p = ht.lay_phieu(pid)
+    if not p:
+        st.error("Không tìm thấy phiếu.")
+        return
+    html(gd.css_ho_tro())
+    tk = ht.thong_tin_tai_khoan(p["nguoi_dung_id"])
+    if tk:
+        html(f'<div class="ht-tk-tt"><span>👤 <b>{gd.e(tk["ho_ten"])}</b></span><span>✉️ {gd.e(tk["email"])}</span>'
+             f'<span>📅 tham gia {gd.e(tk["ngay_tao"])}</span>'
+             f'{"<span>☎ " + gd.e(tk["sdt"]) + "</span>" if tk["sdt"] else ""}'
+             f'{"<span>☎ (phiếu) " + gd.e(p["lien_he"]) + "</span>" if p["lien_he"] else ""}'
+             f'<span>🪙 {vx.so_du(p["nguoi_dung_id"])} xu</span>'
+             f'<span>{"👑 VIP" if vx.la_vip(p["nguoi_dung_id"]) else "Chưa VIP"}</span>'
+             f'<span>🎫 {tk["so_phieu"]} phiếu</span></div>')
+    else:
+        html(f'<div class="ht-tk-tt">✉️ Phiếu từ email · {gd.e(p["ten_lh"])} · {gd.e(p["lien_he"])}</div>')
+    hien_phieu(p, "qt")
+    mau = st.selectbox("Chèn mẫu câu", ["(Không dùng mẫu)"] + list(ht.MAU_CAU), key=f"ht_mau_{pid}")
+    goi_y = "" if mau.startswith("(") else ht.MAU_CAU[mau].replace("{ten}", f"anh/chị {(p['ten_lh'] or '').split(' ')[-1]}".strip())
+    with st.form(f"ht_qt_{pid}"):
+        nd = st.text_area("Trả lời", value=goi_y, height=140, key=f"ht_qt_nd_{pid}_{mau}",
+                          help="Sửa các chỗ trong [ngoặc vuông] trước khi gửi.")
+        c1, c2, c3 = st.columns(3)
+        noi_bo = c1.checkbox("🔒 Chỉ ghi chú nội bộ", help="Khách không thấy")
+        tt_moi = c2.selectbox("Trạng thái sau khi lưu", ["(tự động)"] + list(ht.TRANG_THAI.values()))
+        uu = c3.selectbox("Mức ưu tiên", ht.UU_TIEN, index=ht.UU_TIEN.index(p["uu_tien"]))
+        if st.form_submit_button("💾 Lưu / Gửi trả lời", type="primary"):
+            if "[" in nd and "]" in nd and not noi_bo:
+                st.error("Còn chỗ trong [ngoặc vuông] chưa điền – sửa lại trước khi gửi khách nhé.")
+            else:
+                ma_tt = None if tt_moi.startswith("(") else {v: k for k, v in ht.TRANG_THAI.items()}[tt_moi]
+                ok, tb = ht.qt_tra_loi(pid, nd, noi_bo, ma_tt, uu if uu != p["uu_tien"] else None)
+                (bao if ok else st.error)(tb)
+                if ok:
+                    st.rerun()
+
+
+@st.dialog("✉️ Tạo phiếu từ email")
+def hop_tao_phieu_email():
+    with st.form("ht_tu_email"):
+        ten = st.text_input("Tên người gửi")
+        mail = st.text_input("Email / số điện thoại người gửi")
+        a1, a2 = st.columns(2)
+        loai = a1.selectbox("Loại", ht.LOAI)
+        phan = a2.selectbox("Phần của app", ht.PHAN_APP)
+        tieu_de = st.text_input("Tiêu đề")
+        nd = st.text_area("Nội dung email (dán vào)", height=140)
+        if st.form_submit_button("Tạo phiếu", type="primary"):
+            ok, tb, ma = ht.gui_phieu(None, ten, loai, phan, tieu_de, nd, mail, kenh="email", la_qt=True)
+            if ok:
+                bao(f"Đã tạo phiếu {ma}. Nhớ trả lời khách qua email.")
+                st.rerun()
+            st.error(tb)
+
+
+def quan_tri_ho_tro():
+    html(gd.css_ho_tro())
+    html(gd.muc_ht("🎧", "Hỗ trợ khách hàng", "Phiếu từ trang Hỗ trợ và email bonong.nongtri@gmail.com"))
+    html(gd.o_thong_ke_ht(ht.thong_ke()))
+    cd = ht.doc_cai_dat()
+    o1, o2, o3 = st.columns([2.6, 1.3, 1.3], vertical_alignment="bottom")
+    loc = o1.segmented_control("Lọc phiếu", ["Cần xử lý", "Đã trả lời", "Đã đóng", "Tất cả"], default="Cần xử lý",
+                               key="ht_qt_loc")
+    if o2.button("✉️ Tạo phiếu từ email", key="ht_qt_email", width="stretch"):
+        hop_tao_phieu_email()
+    with o3.popover("🏖️ Nghỉ phép" + (" · đang bật" if cd["nghi_phep"] else ""), width="stretch"):
+        bat = st.toggle("Bật thông báo nghỉ phép", value=cd["nghi_phep"], key="ht_nghi_bat")
+        ngay = st.date_input("Quay lại sau ngày", value=None, format="DD/MM/YYYY", key="ht_nghi_ngay")
+        if st.button("Lưu", key="ht_nghi_luu", type="primary"):
+            bao(ht.luu_cai_dat(bat, ngay.strftime("%d/%m/%Y") if ngay else "")[1])
+            st.rerun()
+    ma_loc = {"Cần xử lý": "can_xu_ly", "Đã trả lời": "da_tra_loi", "Đã đóng": "da_dong"}.get(loc, "tat_ca")
+    ds = ht.ds_phieu_qt(ma_loc)
+    if not ds:
+        html('<div class="ht-rong"><div>🎉</div>Không còn phiếu nào ở mục này.</div>')
+    for p in ds[:60]:
+        with st.container(key=f"htqp_{p['id']}"):
+            a1, a2 = st.columns([6, 1], vertical_alignment="center")
+            with a1:
+                html(gd.the_phieu(p, True, bool(p["qt_chua_doc"]) and p["trang_thai"] != "da_dong",
+                                  f'<span>👤 {gd.e(p["ten_lh"])}</span>'))
+            if a2.button("Xử lý →", key=f"ht_qt_mo_{p['id']}", width="stretch",
+                         type="primary" if p["qua_han"] or p["qt_chua_doc"] else "secondary"):
+                hop_phieu_qt(p["id"])
+    st.divider()
+
+
 TRANG_CON = {"vi": trang_vi, "vip": trang_vip, "tro_ly": trang_tro_ly, "ca_nhan": trang_ca_nhan,
-             "nong_trai": trang_nong_trai, "dien_dan": trang_dien_dan}
+             "nong_trai": trang_nong_trai, "dien_dan": trang_dien_dan, "ho_tro": trang_ho_tro}
 
 
 def dieu_huong_nhanh():

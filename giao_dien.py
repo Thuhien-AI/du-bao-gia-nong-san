@@ -937,7 +937,7 @@ def loi_ich_dang_nhap() -> str:
 
 
 def thanh_tai_khoan(ho_ten: str, link_trang_chu: str = "?", so_xu: int = None, vip: dict = None,
-                    anh_b64: str = "", dang_o_ca_nhan: bool = False) -> str:
+                    anh_b64: str = "", dang_o_ca_nhan: bool = False, so_ht: int = 0) -> str:
     """Thanh điều hướng góc trên: 🏠 Trang chủ · 🪙 số xu · 👑 VIP · ô tài khoản."""
     chu_cai = (ho_ten.strip().split()[-1][:1] if ho_ten.strip() else "?").upper()
     ten_goi = ho_ten.strip().split()[-1] if ho_ten.strip() else ""
@@ -961,7 +961,9 @@ def thanh_tai_khoan(ho_ten: str, link_trang_chu: str = "?", so_xu: int = None, v
                f'<a class="chip-nt" href="?trang=nong_trai" target="_self" title="Nông trại · trồng cây nhận xu">'
                f'<span class="cay-nho">🌱</span>Nông trại</a>'
                f'<a class="chip-nt chip-dd" href="?trang=dien_dan" target="_self" title="Diễn đàn · trò chuyện · chợ">'
-               f'<span class="cay-nho">💬</span>Diễn đàn</a>{xu}{nhan_vip}'
+               f'<span class="cay-nho">💬</span>Diễn đàn</a>'
+               f'<a class="chip-nt chip-ht" href="?trang=ho_tro" target="_self" title="Hỗ trợ · hỏi đáp · khiếu nại">'
+               f'<span class="cay-nho">🎧</span>Hỗ trợ{f"<span class=ht-so>{so_ht}</span>" if so_ht else ""}</a>{xu}{nhan_vip}'
                f'<a class="chip-tk {"dang-chon" if dang_o_ca_nhan else ""}" href="?trang=ca_nhan" target="_self" '
                f'title="Trang cá nhân">'
                + (f'<span class="avatar co-anh"><img src="data:image/jpeg;base64,{anh_b64}" alt=""></span>' if anh_b64
@@ -3707,4 +3709,308 @@ def css_dai_ly() -> str:
 .dl-rong div { font-size:2.4rem; animation:dl-lac 2.4s ease-in-out infinite; }
 @media (max-width:640px) { .dl-dau-t { font-size:1.35rem; } .dl-os { min-width:0; width:100%; } .dl-gia { margin-left:0; align-items:flex-start; text-align:left; } }
 @media (prefers-reduced-motion:reduce) { .dl-dau, .dl-hat, .dl-xe, .dl-nut.goi, .dl-hoi, .dl-hoi i, .dl-lua, .dl-huy, .dl-o i, .dl-reng { animation:none !important; } }
+</style>""")
+
+
+# ================================================================ HỖ TRỢ KHÁCH HÀNG
+_MAU_UU_TIEN = {"Khẩn": "khan", "Cao": "cao", "Thường": "thuong", "Thấp": "thap"}
+_MAU_TT = {"moi": "moi", "dang_xu_ly": "dang", "da_tra_loi": "tl", "da_dong": "dong"}
+_BUOC_TT = {"moi": 1, "dang_xu_ly": 2, "da_tra_loi": 3, "da_dong": 4}
+_ICON_LOAI = {"Câu hỏi": ("💬", "hoi"), "Báo lỗi": ("🐞", "loi"), "Khiếu nại": ("⚠️", "kn"), "Góp ý": ("💡", "gy")}
+
+
+def dau_ho_tro(email: str, link_mail: str, trong_gio: bool, nghi: dict) -> str:
+    dang_lam = trong_gio and not nghi.get("nghi_phep")
+    trang = ('<span class="ht-tt mo"><i></i>Đang trực tuyến · trong giờ làm việc</span>' if dang_lam
+             else '<span class="ht-tt dong"><i></i>Ngoài giờ · vẫn nhận phiếu, trả lời khi vào giờ làm việc</span>')
+    bao_nghi = ""
+    if nghi.get("nghi_phep"):
+        bao_nghi = (f'<div class="ht-nghi"><b>🏖️ Nhân viên hỗ trợ đang nghỉ phép'
+                    f'{" đến hết ngày " + e(nghi["ngay_quay_lai"]) if nghi.get("ngay_quay_lai") else ""}.</b> '
+                    f'Phiếu vẫn được nhận và trả lời khi quay lại; việc khẩn vẫn được xem mỗi ngày.</div>')
+    cam_ket = "".join(f'<div class="ht-ck" style="animation-delay:{.25 + i * .1:.2f}s"><b>{a}</b><span>{b}</span></div>'
+                      for i, (a, b) in enumerate([("≤ 4 giờ", "phản hồi việc khẩn"), ("1 ngày", "phản hồi việc thường"),
+                                                  ("6 ngày", "làm việc mỗi tuần")]))
+    return gon(f'<div class="ht-dau"><span class="ht-cau c1"></span><span class="ht-cau c2"></span><span class="ht-cau c3"></span>'
+               f'<div class="ht-luoi"></div>'
+               f'<div class="ht-dau-trai"><div class="ht-the-nho">TRUNG TÂM HỖ TRỢ BỒ NÔNG</div>'
+               f'<div class="ht-dau-t">Chúng tôi ở đây<br><span>để giúp bà con</span></div>'
+               f'<div class="ht-dau-m">Hỏi cách dùng, báo lỗi, khiếu nại hay góp ý. Mỗi yêu cầu có mã phiếu riêng '
+               f'để bạn theo dõi đến khi xong.</div>{trang}<div class="ht-cks">{cam_ket}</div></div>'
+               f'<div class="ht-lh"><div class="ht-lh-the">'
+               f'<div class="ht-lh-dau"><span class="ht-av">🎧</span><div><b>Bộ phận Hỗ trợ</b>'
+               f'<small>Thứ Hai – Thứ Bảy · 8:00 – 17:00</small></div></div>'
+               f'<a class="ht-mail" href="{e(link_mail)}" title="Gửi email cho Bồ Nông"><span class="ht-mail-ic">✉️</span>'
+               f'<span><small>Gửi email</small><b>{e(email)}</b></span><span class="ht-mui">→</span></a>'
+               f'<div class="ht-lh-chu">Không đăng nhập được hoặc quên mật khẩu? Hãy gửi email từ đúng địa chỉ đã đăng ký.</div>'
+               f'</div></div></div>{bao_nghi}')
+
+
+def buoc_ho_tro() -> str:
+    b = [("📝", "Gửi yêu cầu", "Chọn loại, mô tả, kèm ảnh nếu có"), ("🎫", "Nhận mã phiếu", "Kèm giờ hẹn trả lời"),
+         ("🎧", "Nhân viên xử lý", "Trả lời ngay trong phiếu"), ("⭐", "Đánh giá & đóng", "Chấm sao khi đã xong")]
+    o = "".join(f'<div class="ht-b" style="animation-delay:{i * .12:.2f}s"><div class="ht-b-ic"><span>{ic}</span>'
+                f'<i>{i + 1}</i></div><b>{t}</b><small>{m}</small></div>' for i, (ic, t, m) in enumerate(b))
+    return gon(f'<div class="ht-buoc"><div class="ht-buoc-day"><span></span></div>{o}</div>')
+
+
+def muc_ht(icon: str, tieu_de: str, phu: str = "") -> str:
+    return gon(f'<div class="ht-muc"><span class="ht-muc-ic">{icon}</span><div><b>{e(tieu_de)}</b>'
+               f'{f"<small>{e(phu)}</small>" if phu else ""}</div></div>')
+
+
+def the_phieu(p: dict, che_do_qt: bool = False, chua_doc: bool = False, them: str = "") -> str:
+    ic, lop = _ICON_LOAI.get(p["loai"], ("💬", "hoi"))
+    han = ""
+    if che_do_qt and p["trang_thai"] != "da_dong":
+        if p["qua_han"]:
+            han = f'<span class="ht-han qua">⏰ Quá hạn từ {p["han_phan_hoi"]:%H:%M %d/%m}</span>'
+        elif not p["phan_hoi_dau_luc"]:
+            han = f'<span class="ht-han">⏳ Hạn {p["han_phan_hoi"]:%H:%M %d/%m}</span>'
+    cham = '<span class="ht-cham-moi" title="Có tin mới"></span>' if chua_doc else ""
+    sao = f'<span class="ht-sao">{"★" * p["sao"]}<em>{"★" * (5 - p["sao"])}</em></span>' if p.get("sao") else ""
+    kenh = '<span class="ht-kenh">✉️ Email</span>' if p.get("kenh") == "email" else ""
+    uu = f'<span class="ht-uu u-{_MAU_UU_TIEN[p["uu_tien"]]}">{e(p["uu_tien"])}</span>' if che_do_qt else ""
+    buoc = _BUOC_TT[p["trang_thai"]]
+    vet = "".join(f'<span class="ht-vet {"xong" if k <= buoc else ""} {"nay" if k == buoc else ""}" title="{t}"></span>'
+                  for k, t in enumerate(["Đã gửi", "Đang xử lý", "Đã trả lời", "Đã đóng"], 1))
+    return gon(f'<div class="ht-phieu uu-{_MAU_UU_TIEN[p["uu_tien"]] if che_do_qt else "kh"} {"qua-han" if p["qua_han"] and che_do_qt else ""}">'
+               f'<div class="ht-loai-ic {lop}">{ic}</div>'
+               f'<div class="ht-phieu-giua"><div class="ht-phieu-tren"><span class="ht-ma">{e(p["ma"])}</span>'
+               f'<span class="ht-nhan tt-{_MAU_TT[p["trang_thai"]]}"><i></i>{e(p["ten_tt"])}</span>{uu}{cham}{kenh}{sao}</div>'
+               f'<div class="ht-tieu-de">{e(p["tieu_de"])}</div>'
+               f'<div class="ht-phieu-duoi"><span>{e(p["loai"])} · {e(p["phan"])}</span>'
+               f'<span>🕑 {p["tao_luc"]:%H:%M · %d/%m/%Y}</span>{them}{han}</div></div>'
+               f'<div class="ht-tien-do"><div class="ht-vets">{vet}</div><small>{e(p["ten_tt"])}</small></div></div>')
+
+
+def bong_tin_ht(t: dict, ten_kh: str) -> str:
+    ben = "nb" if t["noi_bo"] else t["ben"]
+    ten = ("Ghi chú nội bộ" if t["noi_bo"] else "Bồ Nông · Hỗ trợ" if t["ben"] == "qt" else (ten_kh or "Khách"))
+    av = "🔒" if t["noi_bo"] else "🎧" if t["ben"] == "qt" else e((ten_kh or "K").strip().split()[-1][:1].upper())
+    return gon(f'<div class="ht-tin {ben}"><div class="ht-tin-av">{av}</div><div class="ht-tin-than">'
+               f'<div class="ht-tin-ai"><b>{e(ten)}</b><span>{t["tao_luc"]:%H:%M · %d/%m}</span></div>'
+               f'<div class="ht-tin-nd">{chu_nguoi_dung(t["noi_dung"])}</div></div></div>')
+
+
+def o_thong_ke_ht(tk: dict) -> str:
+    def o(ic, nhan, gt, hien, muc, phan, tot):
+        tt = "" if gt is None else ("dat" if tot else "chua")
+        return (f'<div class="ht-tk {tt}"><div class="ht-vong-tk" style="--p:{0 if gt is None else max(4, min(100, phan)):.0f}">'
+                f'<span>{ic}</span></div><div><small>{nhan}</small><b>{"—" if gt is None else hien}</b>'
+                f'<em>{"Chưa có dữ liệu" if gt is None else ("✓ Đạt mục tiêu " if tot else "✗ Mục tiêu ") + muc}</em></div></div>')
+    dh, gio, ml, sao = tk["dung_han"], tk["gio_tb"], tk["mot_lan"], tk["sao_tb"]
+    return gon('<div class="ht-tks">'
+               + f'<div class="ht-tk tong"><div class="ht-tk-so">{tk["tong"]}</div><div><small>Phiếu 7 ngày qua</small>'
+                 f'<b>yêu cầu</b><em>tính cả phiếu từ email</em></div></div>'
+               + o("⏱️", "Phản hồi đúng hạn", dh, f"{dh}%", "≥ 90%", dh or 0, (dh or 0) >= 90)
+               + o("⚡", "Phản hồi trung bình", gio, f"{gio} giờ", "≤ 4 giờ", 100 if (gio or 0) <= 4 else 400 / (gio or 1),
+                   (gio if gio is not None else 99) <= 4)
+               + o("🎯", "Xong trong 1 lần", ml, f"{ml}%", "≥ 60%", ml or 0, (ml or 0) >= 60)
+               + o("⭐", "Mức hài lòng", sao, f"{sao}/5", "≥ 4,2", (sao or 0) * 20, (sao or 0) >= 4.2)
+               + '</div>')
+
+
+def css_ho_tro() -> str:
+    return gon("""<style>
+@property --ht-p { syntax:'<number>'; inherits:false; initial-value:0; }
+@keyframes ht-len { from { opacity:0; transform:translateY(16px); } to { opacity:1; transform:none; } }
+@keyframes ht-troi { 0%,100% { transform:translate(0,0) scale(1); } 33% { transform:translate(30px,-20px) scale(1.1); }
+  66% { transform:translate(-20px,15px) scale(.95); } }
+@keyframes ht-nhay { 0%,100% { opacity:1; transform:scale(1); } 50% { opacity:.35; transform:scale(.8); } }
+@keyframes ht-song { 0% { box-shadow:0 0 0 0 rgba(108,233,166,.6); } 100% { box-shadow:0 0 0 10px rgba(108,233,166,0); } }
+@keyframes ht-do { 0% { box-shadow:0 0 0 0 rgba(240,68,56,.55); } 100% { box-shadow:0 0 0 9px rgba(240,68,56,0); } }
+@keyframes ht-chay { from { transform:translateX(-100%); } to { transform:translateX(400%); } }
+@keyframes ht-vong { from { --ht-p:0; } }
+@keyframes ht-sang { from { background-position:-200% 0; } to { background-position:200% 0; } }
+@keyframes ht-lac { 0%,100% { transform:rotate(0); } 20% { transform:rotate(-12deg); } 40% { transform:rotate(10deg); } 60% { transform:rotate(-6deg); } }
+
+/* ===== hero ===== */
+.ht-dau { position:relative; overflow:hidden; display:flex; justify-content:space-between; align-items:stretch; gap:28px;
+  flex-wrap:wrap; padding:34px 34px 30px; border-radius:28px; margin:.4rem 0 1.1rem; color:#fff; isolation:isolate;
+  background:linear-gradient(135deg,#062A35 0%,#0B4552 45%,#0F5E5C 100%); box-shadow:0 30px 60px -34px rgba(6,42,53,.95); }
+.ht-cau { position:absolute; border-radius:50%; filter:blur(48px); opacity:.55; z-index:-1; animation:ht-troi 18s ease-in-out infinite; }
+.ht-cau.c1 { width:320px; height:320px; background:#14B8A6; top:-120px; left:-60px; }
+.ht-cau.c2 { width:260px; height:260px; background:#22C55E; bottom:-140px; right:22%; animation-delay:-6s; opacity:.35; }
+.ht-cau.c3 { width:240px; height:240px; background:#38BDF8; top:-80px; right:-60px; animation-delay:-12s; opacity:.35; }
+.ht-luoi { position:absolute; inset:0; z-index:-1; opacity:.18;
+  background-image:radial-gradient(rgba(255,255,255,.7) 1px, transparent 1px); background-size:22px 22px;
+  mask-image:linear-gradient(120deg,#000 0%,transparent 70%); -webkit-mask-image:linear-gradient(120deg,#000 0%,transparent 70%); }
+.ht-dau-trai { flex:1 1 400px; animation:ht-len .6s ease both; }
+.ht-the-nho { display:inline-block; font-size:.7rem; font-weight:800; letter-spacing:.14em; color:#99F6E4;
+  padding:5px 12px; border-radius:999px; background:rgba(153,246,228,.1); border:1px solid rgba(153,246,228,.25); }
+.ht-dau-t { font-size:2.15rem; font-weight:900; line-height:1.12; margin:14px 0 10px; letter-spacing:-.02em; }
+.ht-dau-t span { background:linear-gradient(90deg,#5EEAD4,#A7F3D0,#FDE68A,#5EEAD4); background-size:200% 100%;
+  -webkit-background-clip:text; background-clip:text; color:transparent; animation:ht-sang 5s linear infinite; }
+.ht-dau-m { color:#CCE7E6; font-size:.95rem; line-height:1.6; max-width:500px; margin-bottom:14px; }
+.ht-tt { display:inline-flex; align-items:center; gap:8px; font-size:.8rem; font-weight:600; color:#E6FFFA;
+  padding:6px 14px; border-radius:999px; background:rgba(255,255,255,.08); border:1px solid rgba(255,255,255,.16); }
+.ht-tt i { width:8px; height:8px; border-radius:50%; background:#6CE9A6; animation:ht-song 1.8s infinite; }
+.ht-tt.dong i { background:#FDB022; animation:none; }
+.ht-cks { display:flex; gap:12px; flex-wrap:wrap; margin-top:20px; }
+.ht-ck { padding:10px 16px; border-radius:16px; background:rgba(255,255,255,.07); border:1px solid rgba(255,255,255,.12);
+  animation:ht-len .6s ease both; min-width:120px; }
+.ht-ck b { display:block; font-size:1.25rem; font-weight:850; color:#fff; } .ht-ck span { font-size:.76rem; color:#A9CFCD; }
+.ht-lh { flex:0 1 340px; display:flex; align-items:center; animation:ht-len .7s .15s ease both; }
+.ht-lh-the { width:100%; padding:18px; border-radius:22px; background:rgba(255,255,255,.1); border:1px solid rgba(255,255,255,.18);
+  backdrop-filter:blur(14px); -webkit-backdrop-filter:blur(14px); box-shadow:inset 0 1px 0 rgba(255,255,255,.15); }
+.ht-lh-dau { display:flex; align-items:center; gap:12px; margin-bottom:14px; }
+.ht-lh-dau b { display:block; font-size:.98rem; } .ht-lh-dau small { color:#A9CFCD; font-size:.76rem; }
+.ht-av { width:44px; height:44px; border-radius:14px; display:grid; place-items:center; font-size:1.35rem;
+  background:linear-gradient(135deg,#2DD4BF,#0EA5A4); box-shadow:0 10px 20px -8px rgba(45,212,191,.7); animation:ht-lac 4s ease-in-out infinite; }
+.ht-mail { position:relative; overflow:hidden; display:flex; align-items:center; gap:12px; text-decoration:none !important;
+  color:#062A35 !important; background:#fff; border-radius:16px; padding:10px 14px 10px 10px; transition:.25s; }
+.ht-mail::after { content:""; position:absolute; inset:0; width:30%; transform:translateX(-100%);
+  background:linear-gradient(100deg,transparent,rgba(20,184,166,.18),transparent); animation:ht-chay 3.2s ease-in-out infinite; }
+.ht-mail:hover { transform:translateY(-2px); box-shadow:0 16px 28px -14px rgba(0,0,0,.55); }
+.ht-mail:hover .ht-mui { transform:translateX(4px); }
+.ht-mail-ic { width:40px; height:40px; border-radius:12px; display:grid; place-items:center; font-size:1.15rem; background:#E6FFFA; flex:none; }
+.ht-mail small { display:block; font-size:.7rem; color:#5B7F86; font-weight:600; } .ht-mail b { font-size:.92rem; word-break:break-all; }
+.ht-mui { margin-left:auto; font-weight:900; color:#0F766E; transition:.2s; }
+.ht-lh-chu { font-size:.76rem; color:#A9CFCD; margin-top:12px; line-height:1.5; }
+.ht-nghi { margin:-.4rem 0 1rem; padding:13px 18px; border-radius:16px; background:linear-gradient(90deg,#FFFAEB,#FEF0C7);
+  border:1px solid #FEDF89; color:#93370D; font-size:.9rem; }
+
+/* ===== các bước ===== */
+.ht-buoc { position:relative; display:grid; grid-template-columns:repeat(4,1fr); gap:12px; margin:0 0 1.2rem; padding:18px 16px 16px;
+  background:#fff; border:1px solid #E4EEEC; border-radius:22px; box-shadow:0 14px 30px -26px rgba(6,42,53,.6); }
+.ht-buoc-day { position:absolute; left:12.5%; right:12.5%; top:42px; height:2px; background:#E4EEEC; overflow:hidden; }
+.ht-buoc-day span { position:absolute; top:0; bottom:0; width:25%; background:linear-gradient(90deg,transparent,#14B8A6,transparent);
+  animation:ht-chay 2.6s linear infinite; }
+.ht-b { position:relative; text-align:center; animation:ht-len .5s ease both; }
+.ht-b-ic { position:relative; width:50px; height:50px; margin:0 auto 8px; border-radius:16px; display:grid; place-items:center;
+  font-size:1.35rem; background:linear-gradient(135deg,#F0FDFA,#CCFBF1); border:1px solid #99F6E4; transition:.25s; }
+.ht-b:hover .ht-b-ic { transform:translateY(-4px) rotate(-6deg); box-shadow:0 12px 22px -12px rgba(15,118,110,.7); }
+.ht-b-ic i { position:absolute; top:-7px; right:-7px; width:20px; height:20px; border-radius:50%; background:#0F766E; color:#fff;
+  font-size:.7rem; font-style:normal; font-weight:800; display:grid; place-items:center; border:2px solid #fff; }
+.ht-b b { display:block; font-size:.88rem; color:#0B2F37; } .ht-b small { font-size:.74rem; color:#6B8A8F; }
+
+/* ===== tiêu đề mục ===== */
+.ht-muc { display:flex; align-items:center; gap:12px; margin:.6rem 0 .6rem; }
+.ht-muc-ic { width:38px; height:38px; border-radius:12px; display:grid; place-items:center; font-size:1.1rem;
+  background:#0B4552; box-shadow:0 8px 16px -8px rgba(11,69,82,.8); }
+.ht-muc b { display:block; font-size:1.08rem; font-weight:850; color:#0B2F37; letter-spacing:-.01em; }
+.ht-muc small { font-size:.78rem; color:#6B8A8F; }
+
+/* ===== FAQ ===== */
+.st-key-ht_faq [data-testid="stExpander"] details { border-radius:16px !important; border:1px solid #E4EEEC !important;
+  background:#fff; margin-bottom:8px; transition:border-color .2s, box-shadow .2s, transform .2s; overflow:hidden; }
+.st-key-ht_faq [data-testid="stExpander"] details:hover { border-color:#99F6E4 !important; transform:translateX(3px);
+  box-shadow:0 10px 22px -16px rgba(15,118,110,.6); }
+.st-key-ht_faq [data-testid="stExpander"] details[open] { border-color:#14B8A6 !important; box-shadow:0 14px 28px -18px rgba(15,118,110,.7); }
+.st-key-ht_faq [data-testid="stExpander"] details[open] summary { background:linear-gradient(90deg,#F0FDFA,#fff); }
+.st-key-ht_faq [data-testid="stExpander"] summary p { font-weight:700 !important; color:#0B2F37 !important; font-size:.93rem !important; }
+.st-key-ht_faq [data-testid="stExpander"] summary svg { color:#0F766E !important; }
+.st-key-ht_faq [data-testid="stExpanderDetails"] p { color:#41646B !important; line-height:1.6; }
+
+/* ===== form ===== */
+.st-key-ht_form { position:relative; background:#fff; border:1px solid #E4EEEC; border-radius:24px; padding:20px 22px 22px;
+  box-shadow:0 20px 40px -32px rgba(6,42,53,.75); animation:ht-len .5s ease both; overflow:hidden; }
+.st-key-ht_form::before { content:""; position:absolute; left:0; right:0; top:0; height:4px;
+  background:linear-gradient(90deg,#0F766E,#14B8A6,#22C55E,#14B8A6,#0F766E); background-size:200% 100%; animation:ht-sang 4s linear infinite; }
+.st-key-ht_form [data-testid="stForm"] { border:none !important; padding:0 !important; }
+.st-key-ht_form label p { font-weight:650 !important; color:#264A51 !important; font-size:.86rem !important; }
+.st-key-ht_form input, .st-key-ht_form textarea, .st-key-ht_form [data-baseweb="select"] > div { border-radius:12px !important; }
+.st-key-ht_form [data-baseweb="input"]:focus-within, .st-key-ht_form [data-baseweb="textarea"]:focus-within,
+.st-key-ht_form [data-baseweb="select"] > div:focus-within { border-color:#14B8A6 !important; box-shadow:0 0 0 3px rgba(20,184,166,.18) !important; }
+.st-key-ht_form [data-testid="stFileUploaderDropzone"] { border-radius:14px; border:1.5px dashed #99F6E4; background:#F8FFFD; }
+.st-key-ht_form [data-testid="stFormSubmitButton"] button { min-height:46px; border-radius:14px !important; border:none !important;
+  background:linear-gradient(135deg,#0B4552,#0F766E 55%,#14B8A6) !important; box-shadow:0 14px 24px -14px rgba(15,118,110,.95);
+  transition:transform .2s, box-shadow .2s; }
+.st-key-ht_form [data-testid="stFormSubmitButton"] button p { font-weight:800 !important; font-size:.98rem !important; }
+.st-key-ht_form [data-testid="stFormSubmitButton"] button:hover { transform:translateY(-2px); box-shadow:0 18px 30px -14px rgba(15,118,110,1); }
+
+/* ===== thẻ phiếu (khung = container st-key-htp_ / htqp_) ===== */
+[class*="st-key-htp_"], [class*="st-key-htqp_"] { position:relative; background:#fff; border:1px solid #E4EEEC; border-radius:18px;
+  padding:12px 14px 12px 16px !important; margin-bottom:2px; transition:transform .2s, box-shadow .2s, border-color .2s;
+  animation:ht-len .45s ease both; }
+[class*="st-key-htp_"]:hover, [class*="st-key-htqp_"]:hover { transform:translateY(-2px); border-color:#99F6E4;
+  box-shadow:0 16px 30px -22px rgba(6,42,53,.75); }
+[class*="st-key-htqp_"]::before { content:""; position:absolute; left:0; top:12px; bottom:12px; width:4px; border-radius:0 4px 4px 0; background:#98A2B3; }
+[class*="st-key-htqp_"]:has(.uu-khan)::before { background:#F04438; } [class*="st-key-htqp_"]:has(.uu-cao)::before { background:#F79009; }
+[class*="st-key-htqp_"]:has(.uu-thuong)::before { background:#2E90FA; }
+[class*="st-key-htqp_"]:has(.qua-han) { background:linear-gradient(90deg,#FFF5F4,#fff 40%); border-color:#FECDCA; }
+[class*="st-key-htp_"] button, [class*="st-key-htqp_"] button { border-radius:12px !important; min-height:38px; transition:.2s; }
+[class*="st-key-htp_"] button[kind="secondary"], [class*="st-key-htqp_"] button[kind="secondary"] { border-color:#CCE7E6 !important; background:#F5FBFA !important; }
+[class*="st-key-htp_"] button[kind="secondary"] p, [class*="st-key-htqp_"] button[kind="secondary"] p { color:#0F766E !important; font-weight:700 !important; }
+[class*="st-key-htp_"] button:hover, [class*="st-key-htqp_"] button:hover { transform:translateX(2px); }
+.ht-phieu { display:flex; align-items:center; gap:14px; }
+.ht-loai-ic { flex:none; width:44px; height:44px; border-radius:14px; display:grid; place-items:center; font-size:1.2rem; }
+.ht-loai-ic.hoi { background:#EFF8FF; } .ht-loai-ic.loi { background:#FEF3F2; } .ht-loai-ic.kn { background:#FFFAEB; } .ht-loai-ic.gy { background:#F0FDF4; }
+.ht-phieu-giua { flex:1; min-width:0; }
+.ht-phieu-tren { display:flex; flex-wrap:wrap; align-items:center; gap:7px; font-size:.74rem; }
+.ht-ma { font-family:ui-monospace,SFMono-Regular,Menlo,monospace; font-weight:700; color:#0B4552; background:#F0F7F6;
+  border:1px solid #DCEBEA; padding:1px 8px; border-radius:7px; }
+.ht-nhan { display:inline-flex; align-items:center; gap:5px; font-weight:700; padding:2px 10px 2px 8px; border-radius:999px; }
+.ht-nhan i { width:6px; height:6px; border-radius:50%; background:currentColor; }
+.ht-nhan.tt-moi { background:#EFF8FF; color:#175CD3; } .ht-nhan.tt-dang { background:#FFFAEB; color:#B54708; }
+.ht-nhan.tt-dang i { animation:ht-nhay 1.2s infinite; }
+.ht-nhan.tt-tl { background:#ECFDF3; color:#067647; } .ht-nhan.tt-dong { background:#F2F4F7; color:#475467; }
+.ht-uu { font-weight:800; padding:2px 9px; border-radius:6px; text-transform:uppercase; font-size:.66rem; letter-spacing:.06em; }
+.ht-uu.u-khan { background:#F04438; color:#fff; } .ht-uu.u-cao { background:#FEF0C7; color:#B54708; }
+.ht-uu.u-thuong { background:#EFF8FF; color:#175CD3; } .ht-uu.u-thap { background:#F2F4F7; color:#667085; }
+.ht-kenh { color:#6941C6; font-weight:700; background:#F4F3FF; padding:2px 8px; border-radius:999px; }
+.ht-sao { color:#F79009; letter-spacing:1px; font-size:.82rem; } .ht-sao em { color:#E4E7EC; font-style:normal; }
+.ht-cham-moi { width:9px; height:9px; border-radius:50%; background:#F04438; animation:ht-do 1.5s infinite; }
+.ht-tieu-de { font-weight:750; color:#0B2F37; margin:5px 0 3px; font-size:.97rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.ht-phieu-duoi { display:flex; flex-wrap:wrap; gap:4px 14px; font-size:.75rem; color:#7A9499; }
+.ht-han { color:#B54708; font-weight:700; } .ht-han.qua { color:#D92D20; font-weight:800; }
+.ht-tien-do { flex:none; text-align:center; width:96px; }
+.ht-vets { display:flex; gap:4px; justify-content:center; margin-bottom:4px; }
+.ht-vet { width:18px; height:5px; border-radius:999px; background:#E4E7EC; transition:.3s; }
+.ht-vet.xong { background:linear-gradient(90deg,#0F766E,#14B8A6); }
+.ht-vet.nay { box-shadow:0 0 0 3px rgba(20,184,166,.18); }
+.ht-tien-do small { font-size:.68rem; color:#7A9499; font-weight:600; }
+
+/* ===== hội thoại ===== */
+.ht-tin { display:flex; gap:10px; margin:10px 0; animation:ht-len .35s ease both; max-width:88%; }
+.ht-tin.qt, .ht-tin.nb { margin-left:auto; flex-direction:row-reverse; }
+.ht-tin-av { flex:none; width:34px; height:34px; border-radius:50%; display:grid; place-items:center; font-size:.9rem; font-weight:800;
+  background:#E4E7EC; color:#344054; }
+.ht-tin.qt .ht-tin-av { background:linear-gradient(135deg,#14B8A6,#0F766E); color:#fff; }
+.ht-tin.nb .ht-tin-av { background:#FEF0C7; }
+.ht-tin-than { padding:10px 14px; border-radius:16px; background:#F2F4F7; border-top-left-radius:4px; }
+.ht-tin.qt .ht-tin-than { background:linear-gradient(135deg,#F0FDFA,#CCFBF1); border-radius:16px; border-top-right-radius:4px; }
+.ht-tin.nb .ht-tin-than { background:#FFFCF0; border:1px dashed #FDB022; border-radius:16px; border-top-right-radius:4px; }
+.ht-tin-ai { display:flex; gap:8px; align-items:baseline; font-size:.74rem; margin-bottom:3px; }
+.ht-tin-ai b { color:#0B2F37; } .ht-tin-ai span { color:#98A2B3; }
+.ht-tin-nd { color:#1D2939; font-size:.93rem; line-height:1.55; }
+.ht-dong-tieu { display:flex; justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap; padding:12px 16px;
+  border-radius:16px; background:linear-gradient(90deg,#062A35,#0F5E5C); color:#fff; margin-bottom:8px; }
+.ht-dong-tieu b { font-size:1rem; } .ht-dong-tieu small { color:#A9CFCD; font-size:.76rem; display:block; }
+.ht-dong-tieu .ht-ma { background:rgba(255,255,255,.12); color:#99F6E4; border-color:rgba(255,255,255,.2); }
+
+/* ===== thống kê quản trị ===== */
+.ht-tks { display:grid; grid-template-columns:repeat(auto-fit,minmax(170px,1fr)); gap:12px; margin:.4rem 0 1rem; }
+.ht-tk { display:flex; align-items:center; gap:12px; background:#fff; border:1px solid #E4EEEC; border-radius:18px; padding:14px;
+  animation:ht-len .45s ease both; transition:.2s; }
+.ht-tk:hover { transform:translateY(-2px); box-shadow:0 14px 26px -20px rgba(6,42,53,.7); }
+.ht-tk small { display:block; font-size:.72rem; color:#6B8A8F; font-weight:600; }
+.ht-tk b { display:block; font-size:1.35rem; color:#0B2F37; font-weight:850; line-height:1.2; }
+.ht-tk em { display:block; font-style:normal; font-size:.68rem; color:#98A2B3; }
+.ht-tk.dat em { color:#067647; font-weight:600; } .ht-tk.chua em { color:#D92D20; font-weight:600; }
+.ht-tk.tong { background:linear-gradient(135deg,#062A35,#0F5E5C); border:none; color:#fff; }
+.ht-tk.tong small, .ht-tk.tong em { color:#A9CFCD; } .ht-tk.tong b { color:#fff; font-size:1rem; }
+.ht-tk-so { font-size:2.2rem; font-weight:900; line-height:1; color:#5EEAD4; }
+.ht-vong-tk { --p:0; flex:none; width:50px; height:50px; border-radius:50%; display:grid; place-items:center;
+  background:conic-gradient(#14B8A6 calc(var(--ht-p) * 1%), #E4EEEC 0); animation:ht-vong 1.4s .2s cubic-bezier(.2,.8,.2,1) both; }
+.ht-vong-tk { --ht-p:var(--p); }
+.ht-tk.chua .ht-vong-tk { background:conic-gradient(#F04438 calc(var(--ht-p) * 1%), #FEE4E2 0); }
+.ht-vong-tk span { width:38px; height:38px; border-radius:50%; background:#fff; display:grid; place-items:center; font-size:1rem; }
+.ht-tk-tt { display:flex; flex-wrap:wrap; gap:6px 14px; background:#F5FBFA; border:1px solid #E4EEEC; border-radius:14px; padding:10px 14px;
+  font-size:.84rem; color:#264A51; margin-bottom:.6rem; }
+.ht-rong { text-align:center; padding:30px 20px; border:1.5px dashed #CCE7E6; border-radius:20px; color:#6B8A8F; background:#FBFEFD; }
+.ht-rong div { font-size:2rem; margin-bottom:6px; }
+
+/* ===== chip thanh trên ===== */
+.thanh-tai-khoan a.chip-ht { color:#0B4552 !important; background:#E6FFFA; border-color:#99F6E4; position:relative; }
+.thanh-tai-khoan a.chip-ht:hover { background:#CCFBF1; box-shadow:0 8px 18px -8px rgba(15,118,110,.55); }
+.thanh-tai-khoan a.chip-ht .ht-so { position:absolute; top:-7px; right:-7px; min-width:19px; height:19px; padding:0 5px;
+  border-radius:999px; background:#F04438; color:#fff; font-size:.68rem; font-weight:800; display:grid; place-items:center;
+  border:2px solid #fff; animation:ht-do 1.5s infinite; }
+.ht-chan-mail { color:#0F766E !important; font-weight:600; }
+@media (max-width:700px) { .ht-buoc { grid-template-columns:repeat(2,1fr); } .ht-buoc-day { display:none; }
+  .ht-dau-t { font-size:1.6rem; } .ht-tien-do { display:none; } }
+@media (prefers-reduced-motion:reduce) { .ht-cau, .ht-dau-t span, .ht-tt i, .ht-av, .ht-mail::after, .ht-buoc-day span,
+  .ht-cham-moi, .chip-ht .ht-so, .st-key-ht_form::before { animation:none !important; } }
 </style>""")
