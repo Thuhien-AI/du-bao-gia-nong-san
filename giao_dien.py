@@ -6,6 +6,7 @@ Mỗi hàm trả về một đoạn HTML; app.py chỉ việc đặt chúng lên
 
 import html as _html
 import math
+from datetime import datetime
 import random
 
 import pandas as pd
@@ -3479,4 +3480,231 @@ def css_dat_hang() -> str:
 .st-key-dd_quay_lai button p {{ color:#4E5E48 !important; font-weight:700 !important; }}
 .dh-cam {{ font-size:.75rem; color:#8A9384; text-align:center; }}
 @media (max-width: 640px) {{ .db-o b {{ display:none; }} .db-o.dang b {{ display:inline; }} }}
+</style>""")
+
+
+# ================================================================ ĐẠI LÝ THU MUA
+_ICON_NS_DL = {"Lúa": "🌾", "Cà phê": "☕", "Hồ tiêu": "🌿"}
+_LOP_NS_DL = {"Lúa": "lua", "Cà phê": "cp", "Hồ tiêu": "tieu"}
+
+
+def the_dai_ly(d: dict, gia_vung: dict, huy_chuong: str = "", ngay_cu: int = 3, thu_tu: int = 0) -> str:
+    """Nội dung 1 thẻ đại lý (khung thẻ là container st-key-dlthe_<id> bên app.py).
+    gia_vung = {nông sản: giá TB mới nhất trong app}."""
+    from urllib.parse import quote
+    ns = d["nong_san"].split(",")
+    lop = _LOP_NS_DL.get(ns[0], "lua")
+    chip = "".join(f'<span class="dl-chip {_LOP_NS_DL.get(n, "")}">{_ICON_NS_DL.get(n, "🌱")} {e(n)}</span>' for n in ns)
+    thanh = ""
+    if d.get("gia"):
+        try:
+            tuoi = (datetime.now() - datetime.fromisoformat(d["gia_luc"])).days
+        except Exception:
+            tuoi = 99
+        cu = tuoi >= ngay_cu
+        tb = gia_vung.get(ns[0])
+        so_sanh = ""
+        if tb and not cu:
+            chenh = (d["gia"] - tb) / tb * 100
+            so_sanh = (f'<span class="dl-cao"><i class="dl-lua">🔥</i> +{chenh:.1f}% so với TB</span>' if chenh > 0.5
+                       else f'<span class="dl-thap">▼ {abs(chenh):.1f}% so với TB</span>' if chenh < -0.5
+                       else '<span class="dl-ngang">≈ ngang giá TB</span>')
+            phan = max(8, min(100, 50 + chenh * 5))
+            thanh = (f'<div class="dl-so"><div class="dl-so-nhan"><span>Giá TB {so(tb)}</span>'
+                     f'<span>Đại lý {so(d["gia"])}</span></div><div class="dl-so-ray"><i class="dl-so-tb"></i>'
+                     f'<b class="{"len" if chenh > 0.5 else "xuong" if chenh < -0.5 else ""}" style="--w:{phan:.0f}%"></b>'
+                     f'</div></div>')
+        cap_nhat = (f'<span class="dl-cu">⚠️ {tuoi} ngày chưa cập nhật – gọi hỏi lại</span>' if cu
+                    else f'<span class="dl-moi"><i class="dl-cham"></i>cập nhật {"hôm nay" if tuoi == 0 else f"{tuoi} ngày trước"}</span>')
+        khoi_gia = (f'<div class="dl-gia {"mo" if cu else ""}"><div class="dl-gia-so"><b>{so(d["gia"])}</b>'
+                    f'<small>đ/kg</small></div>{so_sanh}{cap_nhat}</div>')
+    else:
+        tk = "".join(f'<span>{_ICON_NS_DL.get(n, "")} TB vùng {so(gia_vung[n])} đ/kg</span>' for n in ns if gia_vung.get(n))
+        khoi_gia = f'<div class="dl-gia trong"><div class="dl-hoi"><i>📞</i> Gọi hỏi giá</div>{tk}</div>'
+    ban_do = "https://www.google.com/maps/search/?api=1&query=" + quote(f'{d["ten"]}, {d["dia_chi"]}')
+    nut = ""
+    if d.get("sdt"):
+        nut += (f'<a class="dl-nut goi" href="tel:{e(d["sdt"].replace(" ", "").replace(".", ""))}">'
+                f'<i class="dl-reng">📞</i> {e(d["sdt"])}</a>')
+    nut += f'<a class="dl-nut bando" href="{e(ban_do)}" target="_blank" rel="noopener"><i class="dl-nay">📍</i> Chỉ đường</a>'
+    if d.get("nguon"):
+        nut += f'<a class="dl-nut nhat" href="{e(d["nguon"])}" target="_blank" rel="noopener">🔗 Nguồn</a>'
+    gio = f'<div class="dl-dong"><i>🕒</i>{e(d["gio_mo"])}</div>' if d.get("gio_mo") else ""
+    ghi = f'<div class="dl-ghi">💬 {e(d["ghi_chu"])}</div>' if d.get("ghi_chu") else ""
+    nguon_net = ('<span class="dl-net">ℹ️ Thông tin từ internet · chưa xác minh trực tiếp</span>'
+                 if not d.get("nguoi_gui_id") else '<span class="dl-net xac">✅ Thành viên đề xuất · quản trị đã duyệt</span>')
+    huy = f'<span class="dl-huy">{huy_chuong}</span>' if huy_chuong else ""
+    tre = f"{min(thu_tu, 12) * 0.07:.2f}s"
+    return gon(f'<style>.st-key-dlthe_{d["id"]} {{ animation-delay:{tre}; }}</style>'
+               f'<div class="dl-the {lop}">{huy}<div class="dl-tren">'
+               f'<div class="dl-anh"><span>{_ICON_NS_DL.get(ns[0], "🌱")}</span></div>'
+               f'<div class="dl-giua"><div class="dl-ten">{e(d["ten"])}</div>'
+               f'<div class="dl-chips">{chip}<span class="dl-tinh">📌 {e(d["tinh"])}</span></div>'
+               f'<div class="dl-dong"><i>🏠</i>{e(d["dia_chi"])}</div>{gio}</div>{khoi_gia}</div>'
+               f'{thanh}{ghi}<div class="dl-nuts">{nut}</div>{nguon_net}</div>')
+
+
+def dau_dai_ly(so_dl: int, gia_vung: dict, so_tinh: int = 0) -> str:
+    o = "".join(f'<div class="dl-o {_LOP_NS_DL[n]}" style="animation-delay:{0.15 + i * 0.1:.2f}s">'
+                f'<i>{_ICON_NS_DL[n]}</i><div><span>{n} · giá TB mới nhất</span><b>{so(g)}<small> đ/kg</small></b></div></div>'
+                for i, (n, g) in enumerate(gia_vung.items()) if g)
+    hat = "".join(f'<span class="dl-hat" style="left:{x}%;animation-delay:{t}s;animation-duration:{dur}s">{c}</span>'
+                  for x, t, dur, c in [(6, 0, 9, "🌾"), (18, 2.5, 11, "☕"), (31, 5, 10, "🌿"), (47, 1.2, 12, "🌾"),
+                                       (63, 3.8, 9, "☕"), (78, 6, 11, "🌿"), (90, 0.6, 10, "🌾")])
+    return gon(f'<div class="dl-dau">{hat}<div class="dl-dau-trai">'
+               f'<div class="dl-dau-nhan">🏪 Bản đồ thu mua Bồ Nông</div>'
+               f'<div class="dl-dau-t">Bán đúng chỗ, <span>được giá cao</span></div>'
+               f'<div class="dl-dau-m"><b>{so_dl}</b> điểm thu mua{f" · <b>{so_tinh}</b> tỉnh" if so_tinh else ""} – lúa An Giang, '
+               f'cà phê &amp; hồ tiêu Tây Nguyên – Đông Nam Bộ. So giá, gọi hỏi rồi hãy chở hàng đi.</div></div>'
+               f'<div class="dl-os">{o}</div><div class="dl-duong"><span class="dl-xe">🚚</span></div></div>')
+
+
+def css_dai_ly() -> str:
+    return gon("""<style>
+@keyframes dl-chay { 0% { background-position:0% 50%; } 50% { background-position:100% 50%; } 100% { background-position:0% 50%; } }
+@keyframes dl-bay { 0% { transform:translateY(40px) rotate(0); opacity:0; } 15% { opacity:.55; } 85% { opacity:.45; }
+  100% { transform:translateY(-190px) rotate(200deg); opacity:0; } }
+@keyframes dl-xe { 0% { left:-8%; } 100% { left:104%; } }
+@keyframes dl-lac { 0%,100% { transform:translateY(0); } 50% { transform:translateY(-2px); } }
+@keyframes dl-len { from { opacity:0; transform:translateY(18px) scale(.98); } to { opacity:1; transform:none; } }
+@keyframes dl-sang { from { background-position:-200% 0; } to { background-position:200% 0; } }
+@keyframes dl-reng { 0%,60%,100% { transform:rotate(0); } 65%,75%,85% { transform:rotate(-16deg); } 70%,80%,90% { transform:rotate(16deg); } }
+@keyframes dl-nay { 0%,100% { transform:translateY(0); } 40% { transform:translateY(-4px); } 60% { transform:translateY(0); } }
+@keyframes dl-lua { 0%,100% { transform:scale(1) rotate(-4deg); } 50% { transform:scale(1.25) rotate(4deg); } }
+@keyframes dl-vong { 0% { box-shadow:0 0 0 0 rgba(47,122,36,.45); } 100% { box-shadow:0 0 0 14px rgba(47,122,36,0); } }
+@keyframes dl-cham { 0%,100% { opacity:1; } 50% { opacity:.25; } }
+@keyframes dl-day { from { width:0; } to { width:var(--w); } }
+@keyframes dl-huy { 0% { transform:scale(0) rotate(-180deg); } 70% { transform:scale(1.25) rotate(12deg); } 100% { transform:scale(1) rotate(-8deg); } }
+@keyframes dl-lap { 0%,100% { filter:drop-shadow(0 3px 4px rgba(0,0,0,.25)) brightness(1); } 50% { filter:drop-shadow(0 0 10px rgba(255,200,0,.9)) brightness(1.15); } }
+
+/* ---- đầu trang ---- */
+.dl-dau { position:relative; overflow:hidden; display:flex; justify-content:space-between; align-items:center; gap:20px;
+  flex-wrap:wrap; padding:26px 28px 40px; border-radius:26px; margin:.4rem 0 1rem; color:#fff;
+  background:linear-gradient(115deg,#7A3E06,#B8620F,#D98A1C,#5E8F2A,#2F7A24); background-size:300% 300%;
+  animation:dl-chay 14s ease infinite; box-shadow:0 24px 44px -26px rgba(122,62,6,.9); }
+.dl-hat { position:absolute; bottom:-10px; font-size:1.4rem; opacity:0; animation:dl-bay linear infinite; pointer-events:none; }
+.dl-dau-trai { position:relative; z-index:1; max-width:520px; }
+.dl-dau-nhan { display:inline-block; font-size:.78rem; font-weight:700; letter-spacing:.04em; text-transform:uppercase;
+  background:rgba(255,255,255,.18); border:1px solid rgba(255,255,255,.3); padding:4px 12px; border-radius:999px; backdrop-filter:blur(6px); }
+.dl-dau-t { font-size:1.75rem; font-weight:900; line-height:1.2; margin:10px 0 6px; text-shadow:0 2px 10px rgba(0,0,0,.18); }
+.dl-dau-t span { background:linear-gradient(90deg,#FFF3C4,#FFFFFF,#FFE08A,#FFF3C4); background-size:200% 100%;
+  -webkit-background-clip:text; background-clip:text; color:transparent; animation:dl-sang 4s linear infinite; }
+.dl-dau-m { font-size:.93rem; opacity:.95; line-height:1.5; } .dl-dau-m b { font-size:1.05rem; }
+.dl-os { position:relative; z-index:1; display:flex; flex-direction:column; gap:9px; min-width:250px; }
+.dl-o { display:flex; align-items:center; gap:12px; padding:9px 16px 9px 10px; border-radius:16px;
+  background:rgba(255,255,255,.16); border:1px solid rgba(255,255,255,.28); backdrop-filter:blur(10px);
+  animation:dl-len .6s cubic-bezier(.2,.8,.2,1) both; transition:.25s; }
+.dl-o:hover { background:rgba(255,255,255,.26); transform:translateX(-4px); }
+.dl-o i { font-style:normal; font-size:1.3rem; width:40px; height:40px; display:grid; place-items:center; border-radius:12px;
+  background:#fff; box-shadow:0 6px 14px -6px rgba(0,0,0,.35); animation:dl-lac 3s ease-in-out infinite; }
+.dl-o.cp i { animation-delay:.5s; } .dl-o.tieu i { animation-delay:1s; }
+.dl-o span { display:block; font-size:.74rem; opacity:.85; } .dl-o b { font-size:1.2rem; font-weight:800; }
+.dl-o small { font-size:.72rem; font-weight:500; opacity:.85; }
+.dl-duong { position:absolute; left:0; right:0; bottom:10px; height:2px;
+  background:repeating-linear-gradient(90deg,rgba(255,255,255,.55) 0 14px,transparent 14px 26px); }
+.dl-xe { position:absolute; bottom:-6px; font-size:1.35rem; transform:scaleX(-1); animation:dl-xe 13s linear infinite; }
+
+/* ---- thanh lọc ---- */
+.st-key-dl_loc { background:#fff; border:1px solid #EEE4D3; border-radius:20px; padding:12px 16px 14px;
+  box-shadow:0 12px 26px -22px rgba(122,62,6,.7); margin-bottom:.6rem; }
+.st-key-dl_loc label p { font-weight:700 !important; color:#7A4A00 !important; font-size:.85rem !important; }
+.st-key-dl_loc [data-testid="stButtonGroup"] button { border-radius:999px !important; transition:.2s; }
+.st-key-dl_loc [data-testid="stButtonGroup"] button[aria-checked="true"],
+.st-key-dl_loc [data-testid="stButtonGroup"] button[kind*="Active"] { background:linear-gradient(135deg,#D98A1C,#B8620F) !important;
+  color:#fff !important; border-color:transparent !important; box-shadow:0 8px 16px -8px rgba(184,98,15,.8); }
+.st-key-dl_loc [data-baseweb="select"] > div { border-radius:14px !important; }
+.dl-dem { color:#7C5A20; font-size:.86rem; margin:.2rem 0 .5rem; } .dl-dem b { color:#B8620F; }
+
+/* ---- thẻ đại lý (khung là container Streamlit) ---- */
+[class*="st-key-dlthe_"] { position:relative; background:#fff; border:1px solid #ECE7DC; border-radius:22px;
+  padding:16px 18px 10px 24px !important; margin-bottom:6px; overflow:visible;
+  box-shadow:0 12px 26px -22px rgba(60,40,10,.6); transition:transform .25s, box-shadow .25s, border-color .25s;
+  animation:dl-len .55s cubic-bezier(.2,.8,.2,1) both; }
+[class*="st-key-dlthe_"]:hover { transform:translateY(-3px); border-color:#E8C98F;
+  box-shadow:0 22px 36px -22px rgba(184,98,15,.55); }
+[class*="st-key-dlthe_"] > div { gap:.35rem !important; }
+.dl-the { position:relative; }
+[class*="st-key-dlthe_"]::before { content:""; position:absolute; left:0; top:0; bottom:0; width:6px; z-index:1;
+  border-radius:22px 0 0 22px; background:linear-gradient(180deg,#E9B949,#5E8F2A); transition:width .25s; }
+[class*="st-key-dlthe_"]:has(.dl-the.cp)::before { background:linear-gradient(180deg,#B5763A,#5A3214); }
+[class*="st-key-dlthe_"]:has(.dl-the.tieu)::before { background:linear-gradient(180deg,#5E8F2A,#1E4D16); }
+[class*="st-key-dlthe_"]:hover::before { width:9px; }
+.dl-huy { position:absolute; top:-30px; right:-14px; font-size:2rem; z-index:2; transform:rotate(-8deg);
+  animation:dl-huy .7s .3s cubic-bezier(.3,1.6,.5,1) both, dl-lap 2.4s 1s ease-in-out infinite; }
+.dl-tren { display:flex; gap:14px; align-items:flex-start; flex-wrap:wrap; }
+.dl-anh { position:relative; flex:0 0 52px; height:52px; border-radius:16px; display:grid; place-items:center; font-size:1.6rem;
+  background:linear-gradient(135deg,#FFF4D6,#F4E2B0); box-shadow:inset 0 0 0 1px rgba(0,0,0,.04); transition:.3s; }
+.dl-the.cp .dl-anh { background:linear-gradient(135deg,#F6E7D8,#E7CBAE); }
+.dl-the.tieu .dl-anh { background:linear-gradient(135deg,#E5F3DC,#C8E3B6); }
+[class*="st-key-dlthe_"]:hover .dl-anh { transform:rotate(-8deg) scale(1.08); }
+.dl-giua { flex:1 1 300px; min-width:0; }
+.dl-ten { font-weight:850; font-size:1.07rem; color:#2A1C05; line-height:1.3; }
+.dl-chips { display:flex; gap:6px; flex-wrap:wrap; margin:6px 0 6px; }
+.dl-chip { border-radius:999px; padding:2px 10px; font-size:.76rem; font-weight:700; background:#FFF4D6; color:#8A5A00; }
+.dl-chip.cp { background:#F6E7D8; color:#6B3A12; } .dl-chip.tieu { background:#E5F3DC; color:#2F6B1F; }
+.dl-tinh { background:#F2F4F7; color:#475467; border-radius:999px; padding:2px 10px; font-size:.76rem; font-weight:600; }
+.dl-dong { display:flex; gap:8px; color:#3D3527; font-size:.89rem; margin-top:3px; }
+.dl-dong i { font-style:normal; width:18px; text-align:center; flex:none; }
+
+.dl-gia { flex:0 0 auto; margin-left:auto; text-align:right; display:flex; flex-direction:column; align-items:flex-end; gap:3px;
+  font-size:.76rem; }
+.dl-gia-so { padding:6px 14px; border-radius:14px; background:linear-gradient(135deg,#FFF1DC,#FFE2B8); }
+.dl-gia-so b { font-size:1.45rem; font-weight:900; color:#B54708; } .dl-gia-so small { color:#B54708; font-weight:600; margin-left:3px; }
+.dl-gia.mo .dl-gia-so { background:#F2F4F7; } .dl-gia.mo .dl-gia-so b, .dl-gia.mo .dl-gia-so small { color:#98A2B3; }
+.dl-cao { color:#C2410C; font-weight:800; } .dl-lua { display:inline-block; font-style:normal; animation:dl-lua 1s ease-in-out infinite; }
+.dl-thap { color:#667085; font-weight:600; } .dl-ngang { color:#475467; font-weight:600; }
+.dl-moi { color:#039855; display:inline-flex; align-items:center; gap:5px; }
+.dl-cham { width:7px; height:7px; border-radius:50%; background:#12B76A; animation:dl-cham 1.4s infinite; }
+.dl-cu { color:#B42318; font-weight:700; }
+.dl-gia.trong span { color:#667085; }
+.dl-hoi { padding:7px 14px; border-radius:14px; font-size:.95rem; font-weight:800; color:#1D4ED8;
+  background:linear-gradient(90deg,#EEF4FF,#DCE8FF,#EEF4FF); background-size:200% 100%; animation:dl-sang 3s linear infinite; }
+.dl-hoi i { display:inline-block; font-style:normal; animation:dl-reng 2.2s ease-in-out infinite; }
+
+.dl-so { margin:10px 0 2px; }
+.dl-so-nhan { display:flex; justify-content:space-between; font-size:.72rem; color:#8A7A5C; margin-bottom:4px; }
+.dl-so-ray { position:relative; height:8px; border-radius:999px; background:#F3EEE4; overflow:visible; }
+.dl-so-ray b { position:absolute; left:0; top:0; bottom:0; border-radius:999px; width:var(--w);
+  background:linear-gradient(90deg,#98A2B3,#667085); animation:dl-day 1.1s .3s cubic-bezier(.2,.8,.2,1) both; }
+.dl-so-ray b.len { background:linear-gradient(90deg,#F5B13D,#E8590C); box-shadow:0 0 10px rgba(232,89,12,.5); }
+.dl-so-ray b.xuong { background:linear-gradient(90deg,#B2CCFF,#5B8DEF); }
+.dl-so-tb { position:absolute; left:50%; top:-4px; bottom:-4px; width:2px; background:#3D3527; border-radius:2px; z-index:1; }
+
+.dl-ghi { color:#5B5240; font-size:.86rem; margin-top:9px; padding:9px 12px; background:#FBF8F2; border-radius:12px;
+  border:1px dashed #EADFCB; }
+.dl-nuts { display:flex; gap:8px; flex-wrap:wrap; margin-top:12px; }
+.dl-nut { position:relative; overflow:hidden; text-decoration:none !important; border-radius:999px; padding:7px 15px;
+  font-size:.86rem; font-weight:700; display:inline-flex; align-items:center; gap:6px; transition:.2s;
+  background:#EEF4FF; color:#1D4ED8 !important; border:1px solid #C9DAFB; }
+.dl-nut i { font-style:normal; display:inline-block; }
+.dl-nut::after { content:""; position:absolute; inset:0; transform:translateX(-120%);
+  background:linear-gradient(110deg,transparent 30%,rgba(255,255,255,.65) 50%,transparent 70%); transition:transform .6s; }
+.dl-nut:hover { transform:translateY(-2px); } .dl-nut:hover::after { transform:translateX(120%); }
+.dl-nut.goi { background:linear-gradient(135deg,#2F7A24,#5BAE3E); color:#fff !important; border-color:transparent;
+  animation:dl-vong 2s infinite; }
+.dl-nut.goi .dl-reng { animation:dl-reng 2.2s ease-in-out infinite; }
+.dl-nut.bando:hover .dl-nay { animation:dl-nay .6s ease infinite; }
+.dl-nut.nhat { background:#F9FAFB; color:#667085 !important; border-color:#EAECF0; }
+.dl-net { display:inline-block; font-size:.73rem; color:#98A2B3; margin-top:9px; } .dl-net.xac { color:#039855; }
+
+/* nút Streamlit dưới thẻ (Báo sai / Sửa) */
+[class*="st-key-dlthe_"] [data-testid="stPopover"] button, [class*="st-key-dlthe_"] [class*="st-key-dl_sua_"] button {
+  min-height:30px !important; padding:2px 12px !important; border-radius:999px !important; border:1px solid #EEE4D3 !important;
+  background:#FFFCF6 !important; transition:.2s; }
+[class*="st-key-dlthe_"] [data-testid="stPopover"] button p, [class*="st-key-dlthe_"] [class*="st-key-dl_sua_"] button p {
+  font-size:.8rem !important; color:#8A6A30 !important; font-weight:600 !important; }
+[class*="st-key-dlthe_"] [data-testid="stPopover"] button:hover, [class*="st-key-dlthe_"] [class*="st-key-dl_sua_"] button:hover {
+  background:#FFF1DC !important; border-color:#E8C98F !important; }
+
+/* khung đề xuất */
+.st-key-dl_dx_vung { margin-top:1rem; border-radius:22px; padding:18px 20px; border:1px solid #CFE3C4;
+  background:linear-gradient(135deg,#F3FAEE,#FFFBF1); position:relative; overflow:hidden; }
+.dl-dx-t { font-weight:850; font-size:1.1rem; color:#1E4D16; } .dl-dx-m { color:#4E6B44; font-size:.88rem; margin-top:2px; }
+.st-key-dl_dx_vung [data-testid="stExpander"] details { border-radius:16px !important; background:#fff; border-color:#DCEBD3 !important; }
+.st-key-dl_dx_vung [data-testid="stFormSubmitButton"] button { border-radius:999px !important;
+  background:linear-gradient(135deg,#2F7A24,#5BAE3E) !important; border:none !important; box-shadow:0 10px 20px -10px rgba(47,122,36,.8); }
+.dl-rong { text-align:center; padding:34px 20px; border-radius:22px; border:2px dashed #EADFCB; background:#FFFCF6; color:#7C5A20; }
+.dl-rong div { font-size:2.4rem; animation:dl-lac 2.4s ease-in-out infinite; }
+@media (max-width:640px) { .dl-dau-t { font-size:1.35rem; } .dl-os { min-width:0; width:100%; } .dl-gia { margin-left:0; align-items:flex-start; text-align:left; } }
+@media (prefers-reduced-motion:reduce) { .dl-dau, .dl-hat, .dl-xe, .dl-nut.goi, .dl-hoi, .dl-hoi i, .dl-lua, .dl-huy, .dl-o i, .dl-reng { animation:none !important; } }
 </style>""")

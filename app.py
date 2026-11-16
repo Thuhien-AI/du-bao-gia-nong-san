@@ -7,6 +7,7 @@
 # Phần vẽ ô / bảng / màu sắc nằm trong file giao_dien.py
 
 import base64
+from datetime import datetime
 import io
 from urllib.parse import urlencode
 from pathlib import Path
@@ -1487,6 +1488,7 @@ def tab_cho():
 
 
 def tab_quan_tri():
+    quan_tri_dai_ly()
     st.markdown("#### 🚩 Nội dung bị ẩn do báo cáo")
     an = dd.ds_bi_an()
     if not an:
@@ -1514,6 +1516,158 @@ def tab_quan_tri():
             st.rerun()
 
 
+def gia_vung_app() -> dict:
+    """Giá trung bình ngày mới nhất của từng nông sản trong dữ liệu app (đ/kg)."""
+    try:
+        df = tai_du_lieu(dau_vet_du_lieu())
+        kq = {}
+        for ns in ["Lúa", "Cà phê", "Hồ tiêu"]:
+            p = df[df["nong_san"] == ns]
+            if len(p):
+                kq[ns] = int(round(p[p["ngay"] == p["ngay"].max()]["gia"].mean()))
+        return kq
+    except Exception:
+        return {}
+
+
+@st.dialog("✏️ Sửa đại lý", width="large")
+def hop_sua_dai_ly(dl_id):
+    d = dd.lay_dai_ly(dl_id) if dl_id else {}
+    with st.form(f"dl_sua_{dl_id}"):
+        ten = st.text_input("Tên đại lý / công ty", d.get("ten", ""))
+        ns = st.multiselect("Thu mua", ["Lúa", "Cà phê", "Hồ tiêu"],
+                            default=[n for n in d.get("nong_san", "").split(",") if n])
+        c1, c2 = st.columns(2)
+        tinh = c1.text_input("Tỉnh", d.get("tinh", ""))
+        sdt = c2.text_input("Số điện thoại", d.get("sdt", ""))
+        dia_chi = st.text_input("Địa chỉ", d.get("dia_chi", ""))
+        c3, c4 = st.columns(2)
+        gia = c3.number_input("Giá thu mua hôm nay (đ/kg, để 0 nếu chưa biết)", 0, 1_000_000, int(d.get("gia") or 0), 100)
+        gio = c4.text_input("Giờ mở cửa", d.get("gio_mo", ""))
+        ghi = st.text_area("Ghi chú", d.get("ghi_chu", ""), height=80)
+        nguon = st.text_input("Link nguồn thông tin", d.get("nguon", ""))
+        if st.form_submit_button("💾 Lưu", type="primary"):
+            if dl_id:
+                ok, tb = dd.sua_dai_ly(dl_id, ten, ns, tinh, dia_chi, sdt, gio, gia or None, ghi, nguon)
+            else:
+                ok, tb = dd.de_xuat_dai_ly(ND_ID, ten, ns, tinh, dia_chi, sdt, gia or None, ghi, la_qt=True)
+            if ok:
+                bao(tb)
+                st.rerun()
+            st.error(tb)
+
+
+def tab_dai_ly():
+    html(gd.css_dai_ly())
+    gia_vung = gia_vung_app()
+    tat_ca = dd.ds_dai_ly()
+    cac_tinh = dd.ds_tinh_dai_ly()
+    html(gd.dau_dai_ly(len(tat_ca), gia_vung, len(cac_tinh)))
+    with st.container(key="dl_loc"):
+        c1, c2, c3 = st.columns([2.4, 1.6, 1.4], vertical_alignment="bottom")
+        ns = c1.segmented_control("🌱 Nông sản", ["Tất cả", "🌾 Lúa", "☕ Cà phê", "🌿 Hồ tiêu"], default="Tất cả", key="dl_ns")
+        tinh = c2.selectbox("📌 Tỉnh", ["Tất cả tỉnh"] + cac_tinh, key="dl_tinh")
+        xep = c3.selectbox("↕️ Xếp theo", ["Giá cao nhất", "Mới thêm"], key="dl_xep")
+    ns = (ns or "").split(" ", 1)[-1]
+    ns = ns if ns in ("Lúa", "Cà phê", "Hồ tiêu") else None
+    ds = dd.ds_dai_ly(ns, tinh if tinh in cac_tinh else None)
+
+    def con_moi(d):
+        try:
+            return d["gia"] and (datetime.now() - datetime.fromisoformat(d["gia_luc"])).days < dd.NGAY_GIA_CU
+        except Exception:
+            return False
+    if xep != "Mới thêm":
+        ds.sort(key=lambda d: (not con_moi(d), -(d["gia"] or 0), d["id"]))
+    else:
+        ds.sort(key=lambda d: -d["id"])
+    # huy chương: top 3 giá còn mới theo từng nông sản chính
+    huy = {}
+    for n in ["Lúa", "Cà phê", "Hồ tiêu"]:
+        top = sorted([d for d in ds if con_moi(d) and d["nong_san"].split(",")[0] == n], key=lambda d: -d["gia"])[:3]
+        for d, h in zip(top, "🥇🥈🥉"):
+            huy[d["id"]] = h
+    if not ds:
+        html('<div class="dl-rong"><div>🔍</div><b>Chưa có đại lý nào phù hợp bộ lọc.</b><br>'
+             'Bạn biết chỗ nào thu mua tốt? Đề xuất ở bên dưới nhé!</div>')
+    else:
+        so_gia = sum(1 for d in ds if con_moi(d))
+        html(f'<div class="dl-dem">Đang hiện <b>{len(ds)}</b> đại lý'
+             f'{f" · <b>{so_gia}</b> nơi có giá mới cập nhật" if so_gia else ""}</div>')
+    for i, d in enumerate(ds):
+        with st.container(key=f"dlthe_{d['id']}"):
+            html(gd.the_dai_ly(d, gia_vung, huy.get(d["id"], ""), dd.NGAY_GIA_CU, i))
+            o1, o2, _ = st.columns([1.1, 0.9, 5])
+            with o1.popover("🚩 Báo sai", width="stretch"):
+                nd = st.text_input("Thông tin nào sai?", key=f"dl_bs_nd_{d['id']}",
+                                   placeholder="VD: giá hôm nay 6.200 đ/kg / đổi số điện thoại")
+                if st.button("Gửi báo sai", key=f"dl_bs_{d['id']}", type="primary"):
+                    ok, tb = dd.bao_sai_dai_ly(ND_ID, d["id"], nd)
+                    (bao if ok else st.error)(tb)
+            if LA_QT and o2.button("✏️ Sửa", key=f"dl_sua_{d['id']}", width="stretch"):
+                hop_sua_dai_ly(d["id"])
+    with st.container(key="dl_dx_vung"):
+        html('<div class="dl-dx-t">🤝 Bạn biết đại lý thu mua giá tốt?</div>'
+             '<div class="dl-dx-m">Gửi để bà con cùng biết – quản trị duyệt rồi mới hiện lên danh sách.</div>')
+        with st.expander("➕ Đề xuất đại lý mới"):
+            with st.form("dl_de_xuat", clear_on_submit=True):
+                ten = st.text_input("Tên đại lý / chủ vựa *")
+                ns_dx = st.multiselect("Thu mua loại nào *", ["Lúa", "Cà phê", "Hồ tiêu"])
+                a1, a2 = st.columns(2)
+                tinh_dx = a1.text_input("Tỉnh *", placeholder="VD: An Giang")
+                sdt = a2.text_input("Số điện thoại", placeholder="VD: 0912 345 678")
+                dia_chi = st.text_input("Địa chỉ *", placeholder="Số nhà, đường/ấp, xã/phường")
+                gia = st.number_input("Giá thu mua bạn biết (đ/kg, để 0 nếu không rõ)", 0, 1_000_000, 0, 100)
+                ghi = st.text_area("Ghi chú thêm", height=70, placeholder="VD: cân điện tử, thanh toán ngay, nhận tại ruộng…")
+                if st.form_submit_button("📨 Gửi đề xuất", type="primary"):
+                    ok, tb = dd.de_xuat_dai_ly(ND_ID, ten, ns_dx, tinh_dx, dia_chi, sdt, gia or None, ghi, la_qt=LA_QT)
+                    (bao if ok else st.error)(tb)
+                    if ok and LA_QT:
+                        st.rerun()
+    st.caption("Giá TB lấy từ dữ liệu giá của Bồ Nông. Thông tin đại lý có thể thay đổi – hãy gọi xác nhận giá và "
+               "cách cân trước khi chở hàng. Thấy sai, bấm 🚩 Báo sai.")
+
+
+def quan_tri_dai_ly():
+    st.markdown("#### 🏪 Đại lý chờ duyệt")
+    cho = dd.ds_dai_ly(trang_thai="cho")
+    if not cho:
+        st.caption("Không có đề xuất mới.")
+    for d in cho:
+        o1, o2, o3 = st.columns([6, 1, 1], vertical_alignment="center")
+        o1.markdown(f"**{d['ten']}** · {d['nong_san']} · {d['tinh']}\n\n{d['dia_chi']} · ☎ {d['sdt'] or '—'}"
+                    f"{' · giá ' + format(d['gia'], ',').replace(',', '.') + ' đ/kg' if d['gia'] else ''}"
+                    f"{chr(10) * 2 + '> ' + d['ghi_chu'] if d['ghi_chu'] else ''}")
+        if o2.button("Duyệt", key=f"qt_dl_ok_{d['id']}", type="primary", width="stretch"):
+            bao(dd.duyet_dai_ly(d["id"], True)[1])
+            st.rerun()
+        if o3.button("Từ chối", key=f"qt_dl_no_{d['id']}", width="stretch"):
+            bao(dd.duyet_dai_ly(d["id"], False)[1])
+            st.rerun()
+    st.markdown("#### 🚩 Báo sai thông tin đại lý")
+    bs = dd.ds_bao_sai_dai_ly()
+    if not bs:
+        st.caption("Không có báo sai mới.")
+    for b in bs:
+        o1, o2, o3 = st.columns([6, 1, 1], vertical_alignment="center")
+        o1.markdown(f"**{b['ten_dl']}** – {b['ho_ten']}: {b['noi_dung']}")
+        if o2.button("Sửa", key=f"qt_bs_sua_{b['id']}", width="stretch"):
+            dd.da_xem_bao_sai(b["id"])
+            hop_sua_dai_ly(b["dai_ly_id"])
+        if o3.button("Đã xem", key=f"qt_bs_xem_{b['id']}", width="stretch"):
+            dd.da_xem_bao_sai(b["id"])
+            st.rerun()
+    o1, o2 = st.columns([1.4, 4])
+    if o1.button("➕ Thêm đại lý", key="qt_dl_them", width="stretch"):
+        hop_sua_dai_ly(None)
+    with o2.popover("🗑️ Xoá đại lý"):
+        tat = dd.ds_dai_ly()
+        chon = st.selectbox("Chọn đại lý", tat, format_func=lambda d: f"{d['ten']} ({d['tinh']})", key="qt_dl_xoa_chon")
+        if chon and st.button("Xoá đại lý này", key="qt_dl_xoa"):
+            bao(dd.xoa_dai_ly(chon["id"])[1])
+            st.rerun()
+
+
 def trang_dien_dan():
     try:
         so_anh_moi = dd.nap_anh_va_huong_dan()   # ảnh mới trong data/anh_san_pham + hướng dẫn mẫu
@@ -1524,9 +1678,10 @@ def trang_dien_dan():
     html(gd.css_dien_dan())
     html(gd.dau_dien_dan(dd.thong_ke()))
     cac_muc = [("bang_tin", "📰", "Bảng tin", tab_bang_tin), ("chat", "💬", "Phòng chat", tab_phong_chat),
-               ("cho", "🛒", "Chợ nông nghiệp", tab_cho)]
+               ("cho", "🛒", "Chợ nông nghiệp", tab_cho),
+               ("dai_ly", "🏪", "Đại lý thu mua", tab_dai_ly)]
     if LA_QT:
-        so_an = dd.so_bi_an()
+        so_an = dd.so_bi_an() + len(dd.ds_dai_ly(trang_thai="cho")) + len(dd.ds_bao_sai_dai_ly())
         cac_muc.append(("quan_tri", "🛡️", "Quản trị" + (f" · {so_an}" if so_an else ""), tab_quan_tri))
     chon = st.session_state.get("dd_tab", "bang_tin")
     if chon not in [m[0] for m in cac_muc]:

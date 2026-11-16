@@ -589,3 +589,169 @@ def nap_anh_va_huong_dan() -> int:
                 pass
             kn.execute("INSERT OR IGNORE INTO cho_anh_da_nap (ten_file, nap_luc) VALUES (?, ?)", (f.name, _bay_gio()))
     return so_anh
+
+
+# ================================================================ ĐẠI LÝ THU MUA
+# Danh sách khởi đầu: doanh nghiệp THẬT có thu mua nông sản ở vùng trồng của app, địa chỉ/điện thoại lấy từ
+# tài liệu công khai trên internet (link ở cột nguồn). KHÔNG có giá thu mua riêng của từng nơi -> "Gọi hỏi giá".
+# Quản trị cập nhật giá / sửa thông tin trên web; người dùng đề xuất thêm (chờ duyệt) và báo sai.
+DAI_LY_MAU = [
+    dict(ten="Công ty CP Tập đoàn Lộc Trời", nong_san="Lúa", tinh="An Giang",
+         dia_chi="23 Hà Hoàng Hổ, phường Long Xuyên, tỉnh An Giang", sdt="0296 3841 299",
+         ghi_chu="Doanh nghiệp lúa gạo lớn ở ĐBSCL, có chuỗi liên kết bao tiêu lúa với nông dân. Gọi trước để hỏi điểm thu mua gần nhất.",
+         nguon="https://finance.vietstock.vn/LTG-ctcp-tap-doan-loc-troi.htm"),
+    dict(ten="Công ty CP Xuất nhập khẩu An Giang (Angimex)", nong_san="Lúa", tinh="An Giang",
+         dia_chi="Số 01 Ngô Gia Tự, phường Long Xuyên, tỉnh An Giang", sdt="0296 999 9999",
+         ghi_chu="Doanh nghiệp xuất khẩu gạo lâu năm của An Giang. Gọi trước để hỏi kho/điểm thu mua lúa.",
+         nguon="https://finance.vietstock.vn/AGM-ctcp-xuat-nhap-khau-an-giang.htm"),
+    dict(ten="Simexco Đắk Lắk (Công ty TNHH MTV XNK 2-9 Đắk Lắk)", nong_san="Cà phê,Hồ tiêu", tinh="Đắk Lắk",
+         dia_chi="23 Ngô Quyền, phường Thành Công, Buôn Ma Thuột, tỉnh Đắk Lắk", sdt="0262 3950 017",
+         ghi_chu="Doanh nghiệp xuất khẩu cà phê hàng đầu Đắk Lắk, cũng kinh doanh hồ tiêu; có chương trình thu mua, hỗ trợ nông dân.",
+         nguon="https://thuvienphapluat.vn/ma-so-thue/cong-ty-tnhh-mot-thanh-vien-xuat-nhap-khau-29-dak-lak-mst-6000234538.html"),
+    dict(ten="Công ty CP Đầu tư – Xuất nhập khẩu Đắk Lắk", nong_san="Cà phê", tinh="Đắk Lắk",
+         dia_chi="228 Hoàng Diệu, phường Thành Công, Buôn Ma Thuột, tỉnh Đắk Lắk", sdt="0262 3852 233",
+         ghi_chu="Doanh nghiệp kinh doanh, xuất khẩu cà phê tại Buôn Ma Thuột.",
+         nguon="https://yellowpages.vn/pdetail/694893/cà-phê.html"),
+    dict(ten="Công ty TNHH Chế biến Gia vị Nedspice Việt Nam", nong_san="Hồ tiêu", tinh="TP. Hồ Chí Minh (Thuận An cũ)",
+         dia_chi="Khu phố Hòa Lân 2, phường Thuận Giao, TP. Hồ Chí Minh", sdt="0274 3718 005",
+         ghi_chu="Nhà máy chế biến, xuất khẩu hồ tiêu ở Đông Nam Bộ. Thường mua qua thương lái/đại lý – gọi hỏi điều kiện bán trực tiếp.",
+         nguon="https://boa.gov.vn/sites/default/files/2025-10/1062tt1025.pdf"),
+]
+NGAY_GIA_CU = 3
+
+
+def _bang_dai_ly(kn):
+    kn.executescript("""
+    CREATE TABLE IF NOT EXISTS dl_dai_ly (
+        id INTEGER PRIMARY KEY AUTOINCREMENT, ten TEXT NOT NULL, nong_san TEXT NOT NULL, tinh TEXT NOT NULL,
+        dia_chi TEXT NOT NULL, sdt TEXT NOT NULL DEFAULT '', gio_mo TEXT NOT NULL DEFAULT '', gia INTEGER,
+        gia_luc TEXT, ghi_chu TEXT NOT NULL DEFAULT '', nguon TEXT NOT NULL DEFAULT '',
+        trang_thai TEXT NOT NULL DEFAULT 'duyet', nguoi_gui_id INTEGER, tao_luc TEXT NOT NULL);
+    CREATE TABLE IF NOT EXISTS dl_bao_sai (
+        id INTEGER PRIMARY KEY AUTOINCREMENT, dai_ly_id INTEGER NOT NULL, nguoi_dung_id INTEGER NOT NULL,
+        noi_dung TEXT NOT NULL, tao_luc TEXT NOT NULL, da_xem INTEGER NOT NULL DEFAULT 0);
+    """)
+    if not kn.execute("SELECT 1 FROM dl_dai_ly LIMIT 1").fetchone():
+        kn.executemany("INSERT INTO dl_dai_ly (ten, nong_san, tinh, dia_chi, sdt, ghi_chu, nguon, tao_luc) "
+                       "VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+                       [(d["ten"], d["nong_san"], d["tinh"], d["dia_chi"], d["sdt"], d["ghi_chu"], d["nguon"], _bay_gio())
+                        for d in DAI_LY_MAU])
+        kn.commit()
+
+
+def _kn_dl():
+    kn = _ket_noi()
+    if csdl.mot_lan("dai_ly"):
+        _bang_dai_ly(kn)
+        csdl.da_lam("dai_ly")
+    return kn
+
+
+def ds_dai_ly(nong_san=None, tinh=None, trang_thai="duyet") -> list:
+    with _kn_dl() as kn:
+        rows = [dict(r) for r in kn.execute("SELECT * FROM dl_dai_ly WHERE trang_thai = ? ORDER BY id", (trang_thai,))]
+    if nong_san:
+        rows = [r for r in rows if nong_san in r["nong_san"].split(",")]
+    if tinh:
+        rows = [r for r in rows if r["tinh"] == tinh]
+    return rows
+
+
+def ds_tinh_dai_ly() -> list:
+    with _kn_dl() as kn:
+        return [r[0] for r in kn.execute("SELECT DISTINCT tinh FROM dl_dai_ly WHERE trang_thai = 'duyet' ORDER BY tinh")]
+
+
+def lay_dai_ly(dl_id):
+    with _kn_dl() as kn:
+        r = kn.execute("SELECT * FROM dl_dai_ly WHERE id = ?", (dl_id,)).fetchone()
+    return dict(r) if r else None
+
+
+def _kiem_dai_ly(ten, nong_san, tinh, dia_chi, sdt, gia):
+    ten, tinh, dia_chi, sdt = (ten or "").strip(), (tinh or "").strip(), (dia_chi or "").strip(), (sdt or "").strip()
+    if len(ten) < 3:
+        return None, "Cần nhập tên đại lý."
+    ns = [n for n in (nong_san or []) if n in ("Lúa", "Cà phê", "Hồ tiêu")]
+    if not ns:
+        return None, "Chọn ít nhất 1 loại nông sản đại lý thu mua."
+    if len(tinh) < 2 or len(dia_chi) < 6:
+        return None, "Cần nhập tỉnh và địa chỉ đầy đủ."
+    if sdt and not re.fullmatch(r"\+?\d[\d\s.]{7,14}", sdt):
+        return None, "Số điện thoại chưa đúng."
+    if gia not in (None, "", 0):
+        try:
+            gia = int(gia)
+            assert 1_000 <= gia <= 1_000_000
+        except Exception:
+            return None, "Giá thu mua phải là số đồng/kg (từ 1.000 đến 1.000.000)."
+    else:
+        gia = None
+    return dict(ten=loc_tu(ten), nong_san=",".join(ns), tinh=tinh, dia_chi=loc_tu(dia_chi), sdt=sdt, gia=gia), None
+
+
+def de_xuat_dai_ly(nd_id, ten, nong_san, tinh, dia_chi, sdt="", gia=None, ghi_chu="", la_qt=False):
+    """Người dùng đề xuất (chờ duyệt). Quản trị thêm thì hiện luôn."""
+    d, loi = _kiem_dai_ly(ten, nong_san, tinh, dia_chi, sdt, gia)
+    if loi:
+        return False, loi
+    with _kn_dl() as kn:
+        da_gui = kn.execute("SELECT COUNT(*) FROM dl_dai_ly WHERE nguoi_gui_id = ? AND tao_luc >= ?",
+                            (nd_id, datetime.now().replace(hour=0, minute=0, second=0).isoformat())).fetchone()[0]
+        if da_gui >= 5 and not la_qt:
+            return False, "Hôm nay bạn đã đề xuất đủ 5 đại lý. Mai gửi tiếp nhé!"
+        kn.execute("INSERT INTO dl_dai_ly (ten, nong_san, tinh, dia_chi, sdt, gia, gia_luc, ghi_chu, trang_thai, "
+                   "nguoi_gui_id, tao_luc) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                   (d["ten"], d["nong_san"], d["tinh"], d["dia_chi"], d["sdt"], d["gia"],
+                    _bay_gio() if d["gia"] else None, loc_tu((ghi_chu or "").strip()[:400]),
+                    "duyet" if la_qt else "cho", nd_id, _bay_gio()))
+    return True, ("Đã thêm đại lý." if la_qt else "Cảm ơn bạn! Đề xuất đã gửi, sẽ hiện sau khi quản trị duyệt.")
+
+
+def sua_dai_ly(dl_id, ten, nong_san, tinh, dia_chi, sdt, gio_mo, gia, ghi_chu, nguon):
+    d, loi = _kiem_dai_ly(ten, nong_san, tinh, dia_chi, sdt, gia)
+    if loi:
+        return False, loi
+    cu = lay_dai_ly(dl_id)
+    gia_luc = _bay_gio() if d["gia"] and (not cu or cu["gia"] != d["gia"]) else (cu or {}).get("gia_luc")
+    with _kn_dl() as kn:
+        kn.execute("UPDATE dl_dai_ly SET ten=?, nong_san=?, tinh=?, dia_chi=?, sdt=?, gio_mo=?, gia=?, gia_luc=?, "
+                   "ghi_chu=?, nguon=? WHERE id=?",
+                   (d["ten"], d["nong_san"], d["tinh"], d["dia_chi"], d["sdt"], (gio_mo or "").strip(), d["gia"],
+                    gia_luc if d["gia"] else None, (ghi_chu or "").strip(), (nguon or "").strip(), dl_id))
+    return True, "Đã lưu thông tin đại lý."
+
+
+def duyet_dai_ly(dl_id, dong_y: bool):
+    with _kn_dl() as kn:
+        kn.execute("UPDATE dl_dai_ly SET trang_thai = ? WHERE id = ?", ("duyet" if dong_y else "tu_choi", dl_id))
+    return True, "Đã duyệt, đại lý đã hiện lên." if dong_y else "Đã từ chối đề xuất."
+
+
+def xoa_dai_ly(dl_id):
+    with _kn_dl() as kn:
+        kn.execute("UPDATE dl_dai_ly SET trang_thai = 'xoa' WHERE id = ?", (dl_id,))
+    return True, "Đã xoá đại lý."
+
+
+def bao_sai_dai_ly(nd_id, dl_id, noi_dung):
+    noi_dung = (noi_dung or "").strip()
+    if len(noi_dung) < 4:
+        return False, "Ghi rõ thông tin nào sai nhé (ví dụ: giá hôm nay chỉ còn 6.200 đ/kg)."
+    with _kn_dl() as kn:
+        kn.execute("INSERT INTO dl_bao_sai (dai_ly_id, nguoi_dung_id, noi_dung, tao_luc) VALUES (?, ?, ?, ?)",
+                   (dl_id, nd_id, loc_tu(noi_dung[:400]), _bay_gio()))
+    return True, "Cảm ơn bạn! Quản trị sẽ kiểm tra và cập nhật."
+
+
+def ds_bao_sai_dai_ly() -> list:
+    with _kn_dl() as kn:
+        return [dict(r) for r in kn.execute(
+            """SELECT b.id, b.noi_dung, b.tao_luc, d.ten AS ten_dl, d.id AS dai_ly_id, n.ho_ten
+               FROM dl_bao_sai b JOIN dl_dai_ly d ON d.id = b.dai_ly_id JOIN nguoi_dung n ON n.id = b.nguoi_dung_id
+               WHERE b.da_xem = 0 ORDER BY b.id DESC""")]
+
+
+def da_xem_bao_sai(bs_id):
+    with _kn_dl() as kn:
+        kn.execute("UPDATE dl_bao_sai SET da_xem = 1 WHERE id = ?", (bs_id,))
